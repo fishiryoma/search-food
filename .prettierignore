@@ -1,0 +1,8 @@
+node_modules
+.next
+out
+public
+dev-log
+*.md
+pnpm-lock.yaml
+.claude

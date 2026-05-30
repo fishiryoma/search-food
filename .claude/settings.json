@@ -1,0 +1,26 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo [dev-log check] 本次對話結束前，請確認是否有需要更新的 dev-log 檔案：phases/ 階段日誌、02-architecture-decisions.md、04-ai-discussions.md、05-issues-and-solutions.md"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo [auto-remind] 程式碼已更新 — 若本次有架構決策或 Bug 修復，記得同步更新 dev-log/"
+          }
+        ]
+      }
+    ]
+  }
+}
