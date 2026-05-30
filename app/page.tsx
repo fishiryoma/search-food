@@ -4,6 +4,8 @@ import { useState } from "react";
 import dynamic from "next/dynamic";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { usePlaces } from "@/hooks/usePlaces";
+import { useFilterStore } from "@/store/useFilterStore";
+import FilterChips from "@/app/components/FilterChips";
 
 const MapView = dynamic(() => import("@/app/components/MapView"), { ssr: false });
 
@@ -11,6 +13,15 @@ export default function Home() {
   const [started, setStarted] = useState(false);
   const { coords, error: geoError, isLoading: geoLoading } = useGeolocation(started);
   const { places, error: placesError, isLoading: placesLoading } = usePlaces(coords, 1000);
+  const { selectedTypes, selectedPriceLevels } = useFilterStore();
+
+  const filteredPlaces = places.filter((p) => {
+    const typeMatch = selectedTypes.length === 0 || p.types.some((t) => selectedTypes.includes(t));
+    const priceMatch =
+      selectedPriceLevels.length === 0 ||
+      (p.priceLevel !== undefined && selectedPriceLevels.includes(p.priceLevel));
+    return typeMatch && priceMatch;
+  });
 
   if (!started) {
     return (
@@ -69,11 +80,14 @@ export default function Home() {
         <p className="text-xs text-zinc-400 mt-0.5">
           {placesLoading && "搜尋餐廳中..."}
           {placesError && `搜尋失敗：${placesError}`}
-          {!placesLoading && !placesError && `找到 ${places.length} 間餐廳`}
+          {!placesLoading &&
+            !placesError &&
+            `顯示 ${filteredPlaces.length} / ${places.length} 間餐廳`}
         </p>
       </div>
+      <FilterChips places={places} />
       <div className="flex-1">
-        <MapView center={coords} radius={1000} places={places} />
+        <MapView center={coords} radius={1000} places={filteredPlaces} />
       </div>
     </main>
   );
