@@ -3,12 +3,14 @@
 import { useState } from "react";
 import dynamic from "next/dynamic";
 import { useGeolocation } from "@/hooks/useGeolocation";
+import { usePlaces } from "@/hooks/usePlaces";
 
 const MapView = dynamic(() => import("@/app/components/MapView"), { ssr: false });
 
 export default function Home() {
   const [started, setStarted] = useState(false);
-  const { coords, error, isLoading } = useGeolocation(started);
+  const { coords, error: geoError, isLoading: geoLoading } = useGeolocation(started);
+  const { places, error: placesError, isLoading: placesLoading } = usePlaces(coords, 1000);
 
   if (!started) {
     return (
@@ -33,7 +35,7 @@ export default function Home() {
     );
   }
 
-  if (isLoading) {
+  if (geoLoading) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-zinc-50">
         <div className="text-center">
@@ -44,12 +46,12 @@ export default function Home() {
     );
   }
 
-  if (error) {
+  if (geoError) {
     return (
       <main className="flex min-h-screen flex-col items-center justify-center p-6 bg-zinc-50">
         <div className="max-w-sm w-full text-center">
           <div className="text-4xl mb-4">⚠️</div>
-          <p className="text-zinc-700 mb-6">{error}</p>
+          <p className="text-zinc-700 mb-6">{geoError}</p>
           <button onClick={() => setStarted(false)} className="text-blue-600 underline text-sm">
             重試
           </button>
@@ -64,10 +66,14 @@ export default function Home() {
     <main className="h-screen flex flex-col">
       <div className="px-4 py-3 bg-white border-b border-zinc-100 shadow-sm">
         <h1 className="text-base font-semibold text-zinc-900">附近餐廳</h1>
-        <p className="text-xs text-zinc-400 mt-0.5">搜尋步行 1km 範圍內的餐廳</p>
+        <p className="text-xs text-zinc-400 mt-0.5">
+          {placesLoading && "搜尋餐廳中..."}
+          {placesError && `搜尋失敗：${placesError}`}
+          {!placesLoading && !placesError && `找到 ${places.length} 間餐廳`}
+        </p>
       </div>
       <div className="flex-1">
-        <MapView center={coords} radius={1000} />
+        <MapView center={coords} radius={1000} places={places} />
       </div>
     </main>
   );

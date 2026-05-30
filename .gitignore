@@ -39,10 +39,18 @@ next-env.d.ts
 # Claude Code 使用者個人設定
 .claude/settings.local.json
 
+# Skill
+.agents
+.claude/skills
+
 # 建置暫存目錄
 tmp-next/
 
-# Firebase Functions 編譯輸出（M2 預留）
+# Firebase Functions 編譯輸出與 log
 functions/lib/
 functions/.env
 functions/.secret.local
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+skills-lock.json

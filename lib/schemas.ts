@@ -19,3 +19,7 @@ export const PlaceSchema = z.object({
   vicinity: z.string().optional(),
 });
 export type Place = z.infer<typeof PlaceSchema>;
+
+export const NearbyResponseSchema = z.object({
+  places: z.array(PlaceSchema),
+});

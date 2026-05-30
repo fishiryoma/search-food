@@ -2,11 +2,12 @@
 
 import { useEffect } from "react";
 import { APIProvider, Map, AdvancedMarker, useMap } from "@vis.gl/react-google-maps";
-import type { GeoCoords } from "@/lib/schemas";
+import type { GeoCoords, Place } from "@/lib/schemas";
 
 interface MapViewProps {
   center: GeoCoords;
   radius?: number;
+  places?: Place[];
 }
 
 function RadiusCircle({ center, radius }: { center: GeoCoords; radius: number }) {
@@ -32,7 +33,7 @@ function RadiusCircle({ center, radius }: { center: GeoCoords; radius: number })
   return null;
 }
 
-export default function MapView({ center, radius = 1000 }: MapViewProps) {
+export default function MapView({ center, radius = 1000, places = [] }: MapViewProps) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY ?? "";
 
   return (
@@ -46,6 +47,13 @@ export default function MapView({ center, radius = 1000 }: MapViewProps) {
       >
         <AdvancedMarker position={center} title="你的位置" />
         <RadiusCircle center={center} radius={radius} />
+        {places.map((place) => (
+          <AdvancedMarker
+            key={place.placeId}
+            position={{ lat: place.lat, lng: place.lng }}
+            title={place.name}
+          />
+        ))}
       </Map>
     </APIProvider>
   );

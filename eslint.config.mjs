@@ -14,6 +14,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Firebase Functions（有自己的 tsconfig，不由 Next.js ESLint 管）
+    "functions/**",
   ]),
 ]);
 
