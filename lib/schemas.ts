@@ -23,3 +23,15 @@ export type Place = z.infer<typeof PlaceSchema>;
 export const NearbyResponseSchema = z.object({
   places: z.array(PlaceSchema),
 });
+
+export const PlaceAnalysisSchema = z.object({
+  placeId: z.string(),
+  cuisine: z.array(z.string()),
+  flavor: z.array(z.string()),
+  occasion: z.array(z.string()),
+});
+export type PlaceAnalysis = z.infer<typeof PlaceAnalysisSchema>;
+
+export const AnalyzeResponseSchema = z.object({
+  analyses: z.array(PlaceAnalysisSchema),
+});

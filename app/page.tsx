@@ -6,14 +6,27 @@ import { useGeolocation } from "@/hooks/useGeolocation";
 import { usePlaces } from "@/hooks/usePlaces";
 import { useFilterStore } from "@/store/useFilterStore";
 import FilterChips from "@/app/components/FilterChips";
+import AnalyzeFilter from "@/app/components/AnalyzeFilter";
+import { fetchAnalyze } from "@/lib/api";
 
 const MapView = dynamic(() => import("@/app/components/MapView"), { ssr: false });
 
 export default function Home() {
   const [started, setStarted] = useState(false);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null);
+
   const { coords, error: geoError, isLoading: geoLoading } = useGeolocation(started);
   const { places, error: placesError, isLoading: placesLoading } = usePlaces(coords, 1000);
-  const { selectedTypes, selectedPriceLevels } = useFilterStore();
+
+  const {
+    selectedTypes,
+    selectedPriceLevels,
+    analyses,
+    selectedFlavors,
+    selectedOccasions,
+    setAnalyses,
+  } = useFilterStore();
 
   const filteredPlaces = places.filter((p) => {
     const typeMatch = selectedTypes.length === 0 || p.types.some((t) => selectedTypes.includes(t));
@@ -22,6 +35,34 @@ export default function Home() {
       (p.priceLevel !== undefined && selectedPriceLevels.includes(p.priceLevel));
     return typeMatch && priceMatch;
   });
+
+  const analysisMap = new Map(analyses.map((a) => [a.placeId, a]));
+  const finalPlaces =
+    analyses.length === 0
+      ? filteredPlaces
+      : filteredPlaces.filter((p) => {
+          const a = analysisMap.get(p.placeId);
+          if (!a) return true;
+          const flavorMatch =
+            selectedFlavors.length === 0 || a.flavor.some((f) => selectedFlavors.includes(f));
+          const occasionMatch =
+            selectedOccasions.length === 0 || a.occasion.some((o) => selectedOccasions.includes(o));
+          return flavorMatch && occasionMatch;
+        });
+
+  async function handleAnalyze() {
+    if (filteredPlaces.length === 0) return;
+    setAnalyzing(true);
+    setAnalyzeError(null);
+    try {
+      const result = await fetchAnalyze(filteredPlaces);
+      setAnalyses(result);
+    } catch (err) {
+      setAnalyzeError(err instanceof Error ? err.message : "分析失敗");
+    } finally {
+      setAnalyzing(false);
+    }
+  }
 
   if (!started) {
     return (
@@ -75,19 +116,34 @@ export default function Home() {
 
   return (
     <main className="h-screen flex flex-col">
-      <div className="px-4 py-3 bg-white border-b border-zinc-100 shadow-sm">
-        <h1 className="text-base font-semibold text-zinc-900">附近餐廳</h1>
-        <p className="text-xs text-zinc-400 mt-0.5">
-          {placesLoading && "搜尋餐廳中..."}
-          {placesError && `搜尋失敗：${placesError}`}
-          {!placesLoading &&
-            !placesError &&
-            `顯示 ${filteredPlaces.length} / ${places.length} 間餐廳`}
-        </p>
+      <div className="px-4 py-3 bg-white border-b border-zinc-100 shadow-sm flex items-center justify-between">
+        <div>
+          <h1 className="text-base font-semibold text-zinc-900">附近餐廳</h1>
+          <p className="text-xs text-zinc-400 mt-0.5">
+            {placesLoading && "搜尋餐廳中..."}
+            {placesError && `搜尋失敗：${placesError}`}
+            {!placesLoading &&
+              !placesError &&
+              `顯示 ${finalPlaces.length} / ${places.length} 間餐廳`}
+          </p>
+        </div>
+        {!placesLoading && filteredPlaces.length > 0 && (
+          <button
+            onClick={handleAnalyze}
+            disabled={analyzing}
+            className="text-xs px-3 py-1.5 rounded-xl bg-blue-600 text-white font-medium disabled:opacity-50"
+          >
+            {analyzing ? "分析中..." : analyses.length > 0 ? "重新分析" : "AI 細篩"}
+          </button>
+        )}
       </div>
+      {analyzeError && (
+        <div className="px-4 py-2 bg-red-50 text-red-600 text-xs">{analyzeError}</div>
+      )}
       <FilterChips places={places} />
+      <AnalyzeFilter />
       <div className="flex-1">
-        <MapView center={coords} radius={1000} places={filteredPlaces} />
+        <MapView center={coords} radius={1000} places={finalPlaces} />
       </div>
     </main>
   );

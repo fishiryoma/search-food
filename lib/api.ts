@@ -1,4 +1,9 @@
-import { NearbyResponseSchema, type Place } from "./schemas";
+import {
+  AnalyzeResponseSchema,
+  NearbyResponseSchema,
+  type Place,
+  type PlaceAnalysis,
+} from "./schemas";
 
 const FUNCTIONS_BASE =
   process.env.NODE_ENV === "development"
@@ -18,4 +23,19 @@ export async function fetchNearby(lat: number, lng: number, radius: number): Pro
   }
 
   return NearbyResponseSchema.parse(await res.json()).places;
+}
+
+export async function fetchAnalyze(places: Place[]): Promise<PlaceAnalysis[]> {
+  const res = await fetch(`${FUNCTIONS_BASE}/analyze`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ places }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: "Network error" }));
+    throw new Error((err as { error?: string }).error ?? "Network error");
+  }
+
+  return AnalyzeResponseSchema.parse(await res.json()).analyses;
 }

@@ -1,30 +1,30 @@
 # M4：LLM 分析
 
 ## 目標
-- 實作 `analyze` Cloud Function（呼叫 Claude Haiku 4.5）
-- 設計 prompt（用 prompt caching 降低費用）
+- 實作 `analyze` Cloud Function（呼叫 Gemini）
+- 設計 prompt，要求結構化 JSON 輸出
 - 前端第二階段細項篩選 UI
 
 ## 開始日期
-<!-- 填入 -->
+2026-05-30
 
 ## 完成日期
-<!-- 填入 -->
+2026-05-30
 
 ## 實作內容
-- [ ] 建立 `functions/src/analyze.ts`
-- [ ] Anthropic SDK 整合，系統提示 + prompt caching
-- [ ] 要求 JSON 輸出（cuisine / flavor / occasion 標籤）
-- [ ] Zod schema 驗證 LLM 回傳
-- [ ] Secret Manager 設定 `ANTHROPIC_API_KEY`
-- [ ] 前端 `AnalyzeFilter.tsx` 元件（顯示 LLM 標籤 chip）
-- [ ] Loading 狀態 UI「分析餐點中…」
-
-## 遇到的問題
-<!-- 遇到問題時填入 -->
+- [x] 安裝 `@google/generative-ai` SDK（functions/）
+- [x] 建立 `functions/src/analyze.ts`（Gemini 2.0 Flash，responseSchema 強制 JSON 輸出）
+- [x] Zod 驗證 LLM 回傳（PlaceAnalysisSchema / AnalyzeResponseSchema）
+- [x] 更新 `lib/schemas.ts`（PlaceAnalysis + AnalyzeResponse）
+- [x] 更新 `lib/api.ts`（fetchAnalyze）
+- [x] 更新 `store/useFilterStore.ts`（加入 analyses / selectedFlavors / selectedOccasions）
+- [x] 建立 `app/components/AnalyzeFilter.tsx`（flavor + occasion chip，藍底區塊區分 AI 篩選）
+- [x] 更新 `app/page.tsx`：「AI 細篩」按鈕 → loading → AnalyzeFilter 顯示 → 最終篩選
+- [x] ESLint ✅ tsc --noEmit ✅ Prettier ✅
 
 ## 與原計畫的差異
-<!-- 如有調整請記錄原因 -->
+- Anthropic Claude Haiku → **Gemini 2.0 Flash**（使用者有 Google AI Studio 免費額度）
+- Prompt caching 省略（Gemini API 免費額度已夠用，不需額外優化）
 
 ## 下一步
 M5：結果頁面（5 間餐廳卡片 + Google Maps deeplink）
