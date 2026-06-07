@@ -50,6 +50,23 @@ type InputPlace = {
   vicinity?: string;
 };
 
+async function generateWithRetry(
+  model: ReturnType<InstanceType<typeof GoogleGenerativeAI>["getGenerativeModel"]>,
+  prompt: string,
+  maxRetries = 3
+) {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await model.generateContent(prompt);
+    } catch (err) {
+      const isOverload = err instanceof Error && err.message.includes("503");
+      if (!isOverload || i === maxRetries - 1) throw err;
+      await new Promise((r) => setTimeout(r, 1000 * 2 ** i));
+    }
+  }
+  throw new Error("unreachable");
+}
+
 export const analyze = onRequest(
   { cors: true, secrets: [GEMINI_KEY], maxInstances: 10 },
   async (req, res) => {
@@ -67,7 +84,7 @@ export const analyze = onRequest(
     try {
       const genAI = new GoogleGenerativeAI(GEMINI_KEY.value());
       const model = genAI.getGenerativeModel({
-        model: "gemini-2.5-flash",
+        model: "gemini-3.1-flash-lite",
         systemInstruction: SYSTEM_INSTRUCTION,
         generationConfig: {
           responseMimeType: "application/json",
@@ -82,7 +99,7 @@ export const analyze = onRequest(
         )
         .join("\n\n");
 
-      const result = await model.generateContent(`請分析以下餐廳：\n\n${placesText}`);
+      const result = await generateWithRetry(model, `請分析以下餐廳：\n\n${placesText}`);
       const validated = AnalyzeResponseSchema.parse(JSON.parse(result.response.text()));
 
       res.json(validated);

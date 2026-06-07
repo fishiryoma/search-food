@@ -45,7 +45,9 @@ export default function MapView({ center, radius = 1000, places = [] }: MapViewP
         gestureHandling="greedy"
         mapId={process.env.NEXT_PUBLIC_GOOGLE_MAPS_ID ?? "DEMO_MAP_ID"}
       >
-        <AdvancedMarker position={center} title="你的位置" />
+        <AdvancedMarker position={center} title="你的位置">
+          <div className="w-4 h-4 rounded-full bg-blue-600 border-2 border-white shadow-md" />
+        </AdvancedMarker>
         <RadiusCircle center={center} radius={radius} />
         {places.map((place) => (
           <AdvancedMarker

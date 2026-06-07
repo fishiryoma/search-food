@@ -7,6 +7,7 @@ import { usePlaces } from "@/hooks/usePlaces";
 import { useFilterStore } from "@/store/useFilterStore";
 import FilterChips from "@/app/components/FilterChips";
 import AnalyzeFilter from "@/app/components/AnalyzeFilter";
+import RestaurantCard from "@/app/components/RestaurantCard";
 import { fetchAnalyze } from "@/lib/api";
 
 const MapView = dynamic(() => import("@/app/components/MapView"), { ssr: false });
@@ -49,6 +50,8 @@ export default function Home() {
             selectedOccasions.length === 0 || a.occasion.some((o) => selectedOccasions.includes(o));
           return flavorMatch && occasionMatch;
         });
+
+  const topPlaces = [...finalPlaces].sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0)).slice(0, 5);
 
   async function handleAnalyze() {
     if (filteredPlaces.length === 0) return;
@@ -142,8 +145,42 @@ export default function Home() {
       )}
       <FilterChips places={places} />
       <AnalyzeFilter />
-      <div className="flex-1">
-        <MapView center={coords} radius={1000} places={finalPlaces} />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="h-[45vh] shrink-0">
+          <MapView center={coords} radius={1000} places={finalPlaces} />
+        </div>
+        <div className="flex-1 overflow-y-auto bg-zinc-50">
+          {placesLoading ? (
+            <div className="flex items-center justify-center p-8">
+              <p className="text-xs text-zinc-400">搜尋中...</p>
+            </div>
+          ) : finalPlaces.length === 0 ? (
+            <div className="flex flex-col items-center justify-center p-8 text-center">
+              <p className="text-zinc-400 text-sm">
+                {places.length === 0 ? "附近 1 公里內沒有找到餐廳" : "找不到符合條件的餐廳"}
+              </p>
+              {places.length > 0 && (
+                <p className="text-zinc-400 text-xs mt-1">請試著放寬篩選條件</p>
+              )}
+            </div>
+          ) : (
+            <>
+              <p className="px-4 pt-3 pb-1 text-xs font-medium text-zinc-400 uppercase tracking-wide">
+                推薦餐廳（前 {topPlaces.length} 名）
+              </p>
+              {topPlaces.map((place, i) => (
+                <RestaurantCard
+                  key={place.placeId}
+                  place={place}
+                  analysis={analysisMap.get(place.placeId)}
+                  userLat={coords.lat}
+                  userLng={coords.lng}
+                  rank={i + 1}
+                />
+              ))}
+            </>
+          )}
+        </div>
       </div>
     </main>
   );
