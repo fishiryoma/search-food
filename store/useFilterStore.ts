@@ -4,59 +4,31 @@ import { create } from "zustand";
 import type { PlaceAnalysis } from "@/lib/schemas";
 
 interface FilterState {
-  // M3 粗篩
-  selectedTypes: string[];
-  selectedPriceLevels: number[];
-  toggleType: (type: string) => void;
-  togglePriceLevel: (level: number) => void;
-  // M4 LLM 細篩
   analyses: PlaceAnalysis[];
   selectedFlavors: string[];
-  selectedOccasions: string[];
+  selectedDishes: string[];
   setAnalyses: (analyses: PlaceAnalysis[]) => void;
   toggleFlavor: (flavor: string) => void;
-  toggleOccasion: (occasion: string) => void;
-  // 重置
+  toggleDish: (dish: string) => void;
   reset: () => void;
 }
 
 export const useFilterStore = create<FilterState>((set) => ({
-  selectedTypes: [],
-  selectedPriceLevels: [],
   analyses: [],
   selectedFlavors: [],
-  selectedOccasions: [],
-  toggleType: (type) =>
-    set((s) => ({
-      selectedTypes: s.selectedTypes.includes(type)
-        ? s.selectedTypes.filter((t) => t !== type)
-        : [...s.selectedTypes, type],
-    })),
-  togglePriceLevel: (level) =>
-    set((s) => ({
-      selectedPriceLevels: s.selectedPriceLevels.includes(level)
-        ? s.selectedPriceLevels.filter((l) => l !== level)
-        : [...s.selectedPriceLevels, level],
-    })),
-  setAnalyses: (analyses) => set({ analyses, selectedFlavors: [], selectedOccasions: [] }),
+  selectedDishes: [],
+  setAnalyses: (analyses) => set({ analyses, selectedFlavors: [], selectedDishes: [] }),
   toggleFlavor: (flavor) =>
     set((s) => ({
       selectedFlavors: s.selectedFlavors.includes(flavor)
         ? s.selectedFlavors.filter((f) => f !== flavor)
         : [...s.selectedFlavors, flavor],
     })),
-  toggleOccasion: (occasion) =>
+  toggleDish: (dish) =>
     set((s) => ({
-      selectedOccasions: s.selectedOccasions.includes(occasion)
-        ? s.selectedOccasions.filter((o) => o !== occasion)
-        : [...s.selectedOccasions, occasion],
+      selectedDishes: s.selectedDishes.includes(dish)
+        ? s.selectedDishes.filter((d) => d !== dish)
+        : [...s.selectedDishes, dish],
     })),
-  reset: () =>
-    set({
-      selectedTypes: [],
-      selectedPriceLevels: [],
-      analyses: [],
-      selectedFlavors: [],
-      selectedOccasions: [],
-    }),
+  reset: () => set({ analyses: [], selectedFlavors: [], selectedDishes: [] }),
 }));

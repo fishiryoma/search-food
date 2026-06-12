@@ -24,11 +24,19 @@ export const NearbyResponseSchema = z.object({
   places: z.array(PlaceSchema),
 });
 
+export const UserContextSchema = z.object({
+  budget: z.enum(["<100", "100~200", ">300"]),
+  preferences: z.array(z.string()),
+});
+export type UserContext = z.infer<typeof UserContextSchema>;
+
 export const PlaceAnalysisSchema = z.object({
   placeId: z.string(),
   cuisine: z.array(z.string()),
   flavor: z.array(z.string()),
-  occasion: z.array(z.string()),
+  signature_dishes: z.array(z.string()),
+  summary: z.string(),
+  score: z.number().min(0).max(100),
 });
 export type PlaceAnalysis = z.infer<typeof PlaceAnalysisSchema>;
 

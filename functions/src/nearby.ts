@@ -2,6 +2,7 @@ import { onRequest } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import { getApps, initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
+import { ALLOWED_ORIGINS, checkRateLimit } from "./utils.js";
 
 if (!getApps().length) initializeApp();
 getFirestore().settings({ ignoreUndefinedProperties: true });
@@ -36,10 +37,16 @@ function cacheKey(lat: number, lng: number, radius: number): string {
 }
 
 export const nearby = onRequest(
-  { cors: true, secrets: [PLACES_KEY], maxInstances: 10 },
+  { cors: ALLOWED_ORIGINS, secrets: [PLACES_KEY], maxInstances: 10 },
   async (req, res) => {
     if (req.method !== "POST") {
       res.status(405).json({ error: "Method not allowed" });
+      return;
+    }
+
+    const ip = req.ip ?? "unknown";
+    if (!(await checkRateLimit(ip))) {
+      res.status(429).json({ error: "Too many requests" });
       return;
     }
 
@@ -73,34 +80,59 @@ export const nearby = onRequest(
         }
       }
 
-      const apiRes = await fetch(PLACES_API_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Goog-Api-Key": PLACES_KEY.value(),
-          "X-Goog-FieldMask": FIELD_MASK,
-        },
-        body: JSON.stringify({
-          locationRestriction: {
-            circle: {
-              center: { latitude: lat, longitude: lng },
-              radius: radiusNum,
-            },
+      const baseBody = {
+        locationRestriction: {
+          circle: {
+            center: { latitude: lat, longitude: lng },
+            radius: radiusNum,
           },
-          includedTypes: ["restaurant"],
-          maxResultCount: 20,
-          languageCode: "zh-TW",
-        }),
-      });
+        },
+        includedTypes: ["restaurant"],
+        maxResultCount: 20,
+        languageCode: "zh-TW",
+      };
 
-      if (!apiRes.ok) {
-        const errText = await apiRes.text();
-        res.status(502).json({ error: `Places API error: ${errText}` });
+      const fetchBatch = async (rankPreference: string) => {
+        const r = await fetch(PLACES_API_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Goog-Api-Key": PLACES_KEY.value(),
+            "X-Goog-FieldMask": FIELD_MASK,
+          },
+          body: JSON.stringify({ ...baseBody, rankPreference }),
+        });
+        if (!r.ok) throw new Error(await r.text());
+        const j = (await r.json()) as { places?: Record<string, unknown>[] };
+        return j.places ?? [];
+      };
+
+      const [byPopularity, byDistance] = await Promise.allSettled([
+        fetchBatch("POPULARITY"),
+        fetchBatch("DISTANCE"),
+      ]);
+
+      const merged = [
+        ...(byPopularity.status === "fulfilled" ? byPopularity.value : []),
+        ...(byDistance.status === "fulfilled" ? byDistance.value : []),
+      ];
+
+      if (merged.length === 0) {
+        const err =
+          byPopularity.status === "rejected"
+            ? (byPopularity as PromiseRejectedResult).reason
+            : (byDistance as PromiseRejectedResult).reason;
+        res.status(502).json({ error: `Places API error: ${String(err)}` });
         return;
       }
 
-      const json = (await apiRes.json()) as { places?: Record<string, unknown>[] };
-      const rawPlaces = json.places ?? [];
+      const seen = new Set<string>();
+      const rawPlaces = merged.filter((p) => {
+        const id = p["id"] as string;
+        if (seen.has(id)) return false;
+        seen.add(id);
+        return true;
+      });
 
       const places = rawPlaces.map((p) => ({
         placeId: p["id"] as string,

@@ -1,7 +1,6 @@
 "use client";
 
-import type { Place } from "@/lib/schemas";
-import type { PlaceAnalysis } from "@/lib/schemas";
+import type { Place, PlaceAnalysis } from "@/lib/schemas";
 
 const PRICE_LABEL: Record<number, string> = { 1: "$", 2: "$$", 3: "$$$", 4: "$$$$" };
 
@@ -33,6 +32,7 @@ export default function RestaurantCard({
   const distKm = haversineKm(userLat, userLng, place.lat, place.lng);
   const distLabel = distKm < 1 ? `${Math.round(distKm * 1000)} m` : `${distKm.toFixed(1)} km`;
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(place.name)}&query_place_id=${place.placeId}`;
+  const isTopPick = rank === 1 && analysis !== undefined;
 
   return (
     <a
@@ -41,12 +41,23 @@ export default function RestaurantCard({
       rel="noopener noreferrer"
       className="flex items-start gap-3 px-4 py-3 bg-white hover:bg-zinc-50 active:bg-zinc-100 transition-colors border-b border-zinc-100"
     >
-      <div className="shrink-0 w-7 h-7 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center mt-0.5">
+      <div
+        className={`shrink-0 w-7 h-7 rounded-full text-xs font-bold flex items-center justify-center mt-0.5 ${
+          isTopPick ? "bg-amber-400 text-white" : "bg-blue-600 text-white"
+        }`}
+      >
         {rank}
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">
-          <p className="font-semibold text-zinc-900 text-sm truncate">{place.name}</p>
+          <div className="flex items-center gap-1.5 min-w-0">
+            <p className="font-semibold text-zinc-900 text-sm truncate">{place.name}</p>
+            {isTopPick && (
+              <span className="shrink-0 text-xs bg-amber-100 text-amber-700 font-semibold px-1.5 py-0.5 rounded-md">
+                AI 首選
+              </span>
+            )}
+          </div>
           <span className="shrink-0 text-xs text-zinc-400">{distLabel}</span>
         </div>
         <div className="flex items-center gap-2 mt-0.5">
@@ -69,7 +80,10 @@ export default function RestaurantCard({
             ))}
           </div>
         )}
-        {place.vicinity && (
+        {analysis?.summary && (
+          <p className="text-xs text-zinc-400 mt-0.5 line-clamp-2">{analysis.summary}</p>
+        )}
+        {place.vicinity && !analysis?.summary && (
           <p className="text-xs text-zinc-400 mt-0.5 truncate">{place.vicinity}</p>
         )}
       </div>

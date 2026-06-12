@@ -7,24 +7,23 @@
 - Budget Alert 設定
 
 ## 開始日期
-<!-- 填入 -->
+2026-06-07
 
 ## 完成日期
-<!-- 填入 -->
+2026-06-07
 
 ## 實作內容
-- [ ] `functions/src/cache.ts` 完整實作（TTL 檢查、write-through）
-- [ ] Cache key 設計：`round(lat,3)_round(lng,3)_1000`（精度 ~111m）
-- [ ] CORS middleware：正式環境只允許 `your-project.web.app`
-- [ ] 限流：Firestore 計數器或 Cloud Armor（依需求決定）
-- [ ] GCP Console 設定 Budget Alert（$5 警告 / $20 停止）
-- [ ] API Key 使用量監控設定
-
-## 遇到的問題
-<!-- 遇到問題時填入 -->
+- [x] Firestore cache（TTL 10 分鐘）— 已於 M2 完成，無需再動
+- [x] 建立 `functions/src/utils.ts`（ALLOWED_ORIGINS + checkRateLimit 共用邏輯）
+- [x] CORS 限制：emulator 允許所有來源，正式環境限定 `search-food-497209.web.app` / `.firebaseapp.com`
+- [x] 限流：Firestore transaction-based 計數器，key = `{ip}_{minute_bucket}`，上限 30 req/min
+  - `expireAtBucket` 欄位保留，供未來清理腳本識別過期文件
+- [ ] GCP Console：設定 Budget Alert（$5 警告 / $20 停止）→ 手動步驟，非程式碼
+- [ ] API Key 限制：Maps JS API 加 HTTP Referrer、Places API 加 IP 限制 → Cloud Console 手動設定
+- [x] ESLint ✅ tsc --noEmit ✅ Prettier ✅
 
 ## 與原計畫的差異
-<!-- 如有調整請記錄原因 -->
+- 限流未採用 Cloud Armor（需付費升級），改用 Firestore transaction counter，適合 MVP 規模
 
 ## 下一步
-M7：Firebase 完整部署
+M7：Firebase 完整部署（Hosting + Functions + Secret Manager）

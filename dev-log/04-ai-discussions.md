@@ -72,4 +72,42 @@
 - **尚未決定的事項**：正式 Map ID 待上線前於 GCP Console 建立
 
 ---
+
+## 2026-06-07｜限流實作：runTransaction vs FieldValue.increment
+
+- **提問 / 需求**：M6 限流實作使用了 `runTransaction`，想了解是否必要，以及 Firestore 寫入有哪些做法。
+- **討論摘要**：
+  - `runTransaction` 保證「讀→判斷→寫」原子性，可完全避免 race condition（兩個請求同時進來都以為自己是第一個）
+  - `FieldValue.increment` 是原子性計數，先寫再讀，允許極小機率在邊界值（第 30 次）同時通過，但不需要鎖定 doc
+  - 對此 App 規模（個人使用，每分鐘幾乎不超過個位數請求），race condition 機率極低，不需要 transaction 的複雜度與延遲
+- **採用的方案**：改用 `FieldValue.increment`，更簡單、延遲更低
+- **放棄的方案與原因**：`runTransaction` — 對此 App 過度設計，增加 Firestore 一次 transaction 的往返延遲
+- **程式碼結論**：
+  ```typescript
+  await ref.set({ count: FieldValue.increment(1), expireAtBucket: bucket + 2 }, { merge: true });
+  const snap = await ref.get();
+  return ((snap.data()?.count as number) ?? 0) <= limitPerMin;
+  ```
+
+---
+
+## 2026-06-12｜M4 增強 — AI 主動推薦與問卷前置
+
+- **提問 / 需求**：現有 M4 分析只給 chip 讓使用者手動篩選，功能太「雞肋」，希望 AI 做出更多分析讓使用者無腦選餐廳。具體要求：
+  1. AI 從餐廳名稱推斷細緻菜系（不用 Google Maps 分類），推不出來再搜尋
+  2. 細篩顯示泰式知名料理如「椒麻雞」，但前提要確認餐廳有這道菜
+  3. 搜尋前彈出問卷：Q1 單選預算（<100 / 100~200 / >300），Q2 複選口味偏好（飯/麵/鹹/甜/湯/乾/熱/冷）
+- **AI 的建議**：
+  - 問卷設計為全螢幕 overlay，Q1 選完立即跳 Q2（不需下一步按鈕），Q2 可略過
+  - AI prompt 加入 userContext，要求根據名稱推斷細緻菜系 + 招牌菜 + 一句話摘要 + 0–100 推薦分數
+  - Schema 新增 `signature_dishes[]`, `summary`, `score`
+  - 搜尋後自動觸發 AI 分析（useRef 防重複），取代手動「AI 細篩」按鈕
+  - 卡片依 score 排序，#1 顯示「AI 首選」金色 badge
+- **採用的方案**：全部採用
+- **放棄的方案與原因**：
+  - Gemini Search Grounding（驗證菜單）— 增加延遲與費用，MVP 先用訓練知識推斷，不確定時留空
+  - 完全移除 M3 chip — 保留作為進階篩選
+- **尚未決定的事項**：Gemini Search Grounding 可在 M8+ 引入以提升招牌菜準確度
+
+---
 <!-- 新的討論往下加，格式：## [日期]｜討論主題 -->

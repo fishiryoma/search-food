@@ -12,12 +12,16 @@
 ## 完成日期
 <!-- 填入 -->
 
+## 部署前必須手動完成（GCP Console）
+- [ ] Budget Alert：$5 警告通知 / $20 強制停止（GCP Console → Billing → Budgets & alerts）
+- [ ] Maps JS API Key：加 HTTP Referrer 白名單，限定 `https://search-food-497209.web.app/*`（GCP Console → APIs & Services → Credentials）
+- [ ] Google Places API Key：加 IP 限制（Cloud Functions 對外 IP），防止 key 外洩後被濫用
+
 ## 實作內容
 - [ ] `firebase init hosting,functions,firestore`
 - [ ] `firebase.json` 設定（rewrite、headers）
 - [ ] `firebase functions:secrets:set GOOGLE_PLACES_KEY`
-- [ ] `firebase functions:secrets:set ANTHROPIC_API_KEY`
-- [ ] Maps JS API Key 設 HTTP Referrer 白名單（正式網域）
+- [ ] `firebase functions:secrets:set GEMINI_API_KEY`
 - [ ] `next build`（`output: 'export'`）確認無 SSR 依賴
 - [ ] `firebase deploy`
 - [ ] 手機 iOS Safari / Android Chrome 實地測試

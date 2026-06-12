@@ -3,6 +3,7 @@ import {
   NearbyResponseSchema,
   type Place,
   type PlaceAnalysis,
+  type UserContext,
 } from "./schemas";
 
 const FUNCTIONS_BASE =
@@ -25,11 +26,14 @@ export async function fetchNearby(lat: number, lng: number, radius: number): Pro
   return NearbyResponseSchema.parse(await res.json()).places;
 }
 
-export async function fetchAnalyze(places: Place[]): Promise<PlaceAnalysis[]> {
+export async function fetchAnalyze(
+  places: Place[],
+  userContext: UserContext
+): Promise<PlaceAnalysis[]> {
   const res = await fetch(`${FUNCTIONS_BASE}/analyze`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ places }),
+    body: JSON.stringify({ places, userContext }),
   });
 
   if (!res.ok) {
