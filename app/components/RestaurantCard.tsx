@@ -54,7 +54,7 @@ export default function RestaurantCard({
             <p className="font-semibold text-zinc-900 text-sm truncate">{place.name}</p>
             {isTopPick && (
               <span className="shrink-0 text-xs bg-amber-100 text-amber-700 font-semibold px-1.5 py-0.5 rounded-md">
-                AI 首選
+                Gemini 首選
               </span>
             )}
           </div>

@@ -15,15 +15,17 @@ const ERROR_MESSAGES: Record<number, string> = {
   3: "取得位置逾時",
 };
 
-// 模組層級判斷，避免在 effect 內同步 setState
-const geolocationAvailable = typeof navigator !== "undefined" && "geolocation" in navigator;
-
 export function useGeolocation(enabled: boolean): GeolocationResult {
   const [coords, setCoords] = useState<GeoCoords | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!enabled || !geolocationAvailable) return;
+    if (!enabled) return;
+
+    if (!("geolocation" in navigator)) {
+      Promise.resolve().then(() => setError("此瀏覽器不支援定位功能"));
+      return;
+    }
 
     let active = true;
 
@@ -47,10 +49,5 @@ export function useGeolocation(enabled: boolean): GeolocationResult {
     };
   }, [enabled]);
 
-  if (enabled && !geolocationAvailable) {
-    return { coords: null, error: "此瀏覽器不支援定位功能", isLoading: false };
-  }
-
-  // isLoading：已啟動但尚未收到結果（coords 與 error 均為 null）
   return { coords, error, isLoading: enabled && !coords && !error };
 }

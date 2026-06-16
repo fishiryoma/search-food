@@ -110,4 +110,19 @@
 - **尚未決定的事項**：Gemini Search Grounding 可在 M8+ 引入以提升招牌菜準確度
 
 ---
+
+## 2026-06-16｜地圖 Marker InfoWindow 設計 — native 風格 vs AI 摘要
+
+- **提問 / 需求**：點擊地圖紅點後希望顯示資訊，討論要用自訂 InfoWindow 還是 Google Maps 原生 place card 風格。原生 place card（點藍圈外 POI 標籤彈出的）有地址、Google Maps 連結，但紅點是 AdvancedMarker，無法直接觸發原生 place card。
+- **討論摘要**：
+  - `AdvancedMarker` 是自訂 DOM 覆蓋層，點擊只觸發 `onClick` callback，不會觸發 Google Maps 原生 place card（原生 place card 只對地圖 tile 上的 POI 標籤有效）
+  - `@vis.gl/react-google-maps` 的 `InfoWindow` 支援 `headerContent` prop，可將名稱放進 native header 區塊，呈現與原生 place card 一致的分層結構
+  - 標題灰色問題：透過 `headerContent` 傳入自訂 React element 即可控制顏色，不受 Google 預設樣式限制
+- **採用的方案**：InfoWindow 顯示 priceLevel（$～$$$$）、rating（⭐）、步行分鐘（Haversine 估算）、「在 Google 地圖上查看」連結，不顯示 AI summary（summary 已在卡片列表中呈現，避免重複）
+- **放棄的方案與原因**：
+  - 在 InfoWindow 中顯示 AI summary — 與卡片列表重複，InfoWindow 應聚焦快速識別（距離、價位、評分）
+  - 使用原生 Google Maps place card — AdvancedMarker 機制上無法觸發，須改為非自訂 Marker 才行
+
+---
+
 <!-- 新的討論往下加，格式：## [日期]｜討論主題 -->

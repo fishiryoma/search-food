@@ -84,4 +84,19 @@
 - **後果與取捨**：每次打開 app 都會自動呼叫 Gemini API（增加費用），但使用者為個人使用，可接受此成本
 
 ---
+
+## ADR-007：步行時間用 Haversine 直線距離估算，而非 Distance Matrix API
+
+- **日期**：2026-06-16
+- **背景**：地圖 InfoWindow 需顯示「步行 X 分鐘」，精確做法是呼叫 Google Maps Distance Matrix API 取得實際路徑步行時間。
+- **決策**：用 Haversine 公式計算直線距離，除以步行速度 80 m/min 估算，實作為 `hooks/useWalkingTime.ts`。
+- **理由**：
+  - Distance Matrix API 每次查詢需額外 API 呼叫（費用 + 延遲）
+  - 個人使用場景下，「步行約 X 分鐘」的粗略估算已足夠幫助判斷距離感
+  - Haversine 純前端計算，無網路延遲，即時顯示
+- **放棄的替代方案**：Distance Matrix API — 精準但有費用，且需後端代理（Key 不能放前端）
+- **後果與取捨**：遇到道路繞行（如河流、高速公路）時，實際步行時間可能比顯示值長；接受此限制，UI 顯示「步行 X 分鐘」（無「約」字，但屬估算值）
+
+---
+
 <!-- 新的 ADR 往下加 -->

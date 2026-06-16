@@ -8,20 +8,21 @@ import { useFilterStore } from "@/store/useFilterStore";
 import AnalyzeFilter from "@/app/components/AnalyzeFilter";
 import RestaurantCard from "@/app/components/RestaurantCard";
 import QuestionnaireOverlay from "@/app/components/QuestionnaireOverlay";
+import LoadingSpinner from "@/app/components/LoadingSpinner";
 import { fetchAnalyze } from "@/lib/api";
 import type { UserContext } from "@/lib/schemas";
 
 const MapView = dynamic(() => import("@/app/components/MapView"), { ssr: false });
 
+const DEBUG_LOADING = false;
+
 export default function Home() {
-  const [started, setStarted] = useState(false);
   const [userContext, setUserContext] = useState<UserContext | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
-  // ref 防止自動分析重複觸發
   const autoAnalysisFiredRef = useRef(false);
 
-  const { coords, error: geoError, isLoading: geoLoading } = useGeolocation(started);
+  const { coords, error: geoError } = useGeolocation(true);
   // 只有在使用者完成問卷後才開始搜尋
   const {
     places,
@@ -29,7 +30,7 @@ export default function Home() {
     isLoading: placesLoading,
   } = usePlaces(userContext ? coords : null, 1000);
 
-  const { analyses, selectedFlavors, selectedDishes, setAnalyses } = useFilterStore();
+  const { analyses, selectedFlavors, selectedDishes, setAnalyses, reset } = useFilterStore();
 
   const validPlaces = places.filter((p) => !p.types.includes("convenience_store"));
 
@@ -76,6 +77,13 @@ export default function Home() {
       .catch((err) => setAnalyzeError(err instanceof Error ? err.message : "分析失敗"));
   }, [autoAnalyzing, validPlaces, userContext, setAnalyses]);
 
+  function handleReset() {
+    reset();
+    setUserContext(null);
+    setAnalyzeError(null);
+    autoAnalysisFiredRef.current = false;
+  }
+
   function handleReanalyze() {
     if (!userContext) return;
     setAnalyzing(true);
@@ -86,50 +94,59 @@ export default function Home() {
       .finally(() => setAnalyzing(false));
   }
 
-  if (!started) {
+  if (DEBUG_LOADING) {
     return (
-      <main className="flex min-h-screen flex-col items-center justify-center p-6 bg-zinc-50">
-        <div className="max-w-sm w-full text-center">
-          <div className="text-5xl mb-6">🍜</div>
-          <h1 className="text-2xl font-bold mb-2 text-zinc-900">附近餐廳推薦</h1>
-          <p className="text-zinc-500 mb-8 leading-relaxed">
-            找出步行 1 公里內
-            <br />
-            最適合你的餐廳
-          </p>
-          <button
-            onClick={() => setStarted(true)}
-            className="w-full bg-blue-600 text-white px-6 py-4 rounded-2xl text-base font-semibold hover:bg-blue-700 active:scale-95 transition-all"
-          >
-            允許取得位置，開始搜尋
-          </button>
-          <p className="mt-4 text-xs text-zinc-400">位置資料僅用於搜尋附近餐廳，不會儲存或上傳</p>
+      <main className="min-h-screen bg-[url('/bg.jpg')] bg-cover bg-center flex flex-col items-center justify-center gap-14">
+        <LoadingSpinner variant="overlay" />
+        <div className="rounded-3xl bg-white/90 backdrop-blur px-10 py-8">
+          <LoadingSpinner variant="inline" />
         </div>
       </main>
     );
   }
 
-  if (geoLoading) {
+  if (analyses.length === 0) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-zinc-50">
-        <div className="text-center">
-          <div className="animate-spin text-3xl mb-3">📍</div>
-          <p className="text-zinc-500">正在取得位置...</p>
-        </div>
-      </main>
-    );
-  }
-
-  if (geoError) {
-    return (
-      <main className="flex min-h-screen flex-col items-center justify-center p-6 bg-zinc-50">
-        <div className="max-w-sm w-full text-center">
-          <div className="text-4xl mb-4">⚠️</div>
-          <p className="text-zinc-700 mb-6">{geoError}</p>
-          <button onClick={() => setStarted(false)} className="text-blue-600 underline text-sm">
-            重試
-          </button>
-        </div>
+      <main className="h-screen bg-[url('/bg.jpg')] bg-cover bg-center">
+        {geoError ? (
+          <div className="fixed inset-0 flex items-center justify-center bg-black/40 px-6">
+            <div className="w-full max-w-sm bg-white rounded-3xl p-6 text-center shadow-2xl">
+              <div className="text-3xl mb-3">⚠️</div>
+              <p className="text-zinc-700 mb-5">{geoError}</p>
+              <button
+                onClick={() => window.location.reload()}
+                className="text-blue-600 underline text-sm"
+              >
+                重試
+              </button>
+            </div>
+          </div>
+        ) : !userContext ? (
+          <QuestionnaireOverlay onComplete={setUserContext} />
+        ) : analyzeError ? (
+          <div className="fixed inset-0 flex items-center justify-center bg-black/50 px-6">
+            <div className="w-full max-w-sm bg-white rounded-3xl p-6 text-center shadow-2xl">
+              <div className="text-3xl mb-3">⚠️</div>
+              <p className="text-zinc-700 mb-5">{analyzeError}</p>
+              <button
+                onClick={handleReanalyze}
+                className="bg-blue-600 text-white px-6 py-2.5 rounded-xl text-sm font-medium"
+              >
+                重新分析
+              </button>
+            </div>
+          </div>
+        ) : coords && !placesLoading && validPlaces.length === 0 ? (
+          <div className="fixed inset-0 flex items-center justify-center bg-black/40 px-6">
+            <div className="w-full max-w-sm bg-white rounded-3xl p-6 text-center shadow-2xl">
+              <p className="text-zinc-700">附近 1 公里內沒有找到餐廳</p>
+            </div>
+          </div>
+        ) : (
+          <div className="fixed inset-0 flex flex-col items-center justify-center">
+            <LoadingSpinner variant="overlay" />
+          </div>
+        )}
       </main>
     );
   }
@@ -145,7 +162,6 @@ export default function Home() {
         <div>
           <h1 className="text-base font-semibold text-zinc-900">附近餐廳</h1>
           <p className="text-xs text-zinc-400 mt-0.5">
-            {!userContext && "等待問卷..."}
             {userContext && placesLoading && "搜尋餐廳中..."}
             {userContext && (autoAnalyzing || analyzing) && !placesLoading && "AI 分析中..."}
             {userContext && placesError && `搜尋失敗：${placesError}`}
@@ -157,15 +173,36 @@ export default function Home() {
               `顯示 ${finalPlaces.length} / ${validPlaces.length} 間餐廳`}
           </p>
         </div>
-        {userContext && analyses.length > 0 && (
+        <div className="flex items-center gap-2">
+          {analyses.length > 0 && (
+            <button
+              onClick={handleReanalyze}
+              disabled={analyzing}
+              className="text-xs px-3 py-1.5 rounded-xl bg-zinc-100 text-zinc-600 font-medium disabled:opacity-50 cursor-pointer"
+            >
+              {analyzing ? "分析中..." : "重新分析"}
+            </button>
+          )}
           <button
-            onClick={handleReanalyze}
-            disabled={analyzing}
-            className="text-xs px-3 py-1.5 rounded-xl bg-zinc-100 text-zinc-600 font-medium disabled:opacity-50"
+            onClick={handleReset}
+            title="重新設定"
+            className="w-8 h-8 flex items-center justify-center rounded-full text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 transition-colors cursor-pointer"
           >
-            {analyzing ? "分析中..." : "重新分析"}
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+              <polyline points="9 22 9 12 15 12 15 22" />
+            </svg>
           </button>
-        )}
+        </div>
       </div>
       {analyzeError && (
         <div className="px-4 py-2 bg-red-50 text-red-600 text-xs">{analyzeError}</div>
@@ -183,9 +220,8 @@ export default function Home() {
               </p>
             </div>
           ) : autoAnalyzing || analyzing ? (
-            <div className="flex flex-col items-center justify-center p-8 gap-2">
-              <div className="animate-spin text-2xl">✨</div>
-              <p className="text-xs text-zinc-400">AI 正在分析餐廳...</p>
+            <div className="flex items-center justify-center p-10">
+              <LoadingSpinner variant="inline" />
             </div>
           ) : finalPlaces.length === 0 ? (
             <div className="flex flex-col items-center justify-center p-8 text-center">
@@ -199,7 +235,7 @@ export default function Home() {
           ) : (
             <>
               <p className="px-4 pt-3 pb-1 text-xs font-medium text-zinc-400 uppercase tracking-wide">
-                推薦餐廳（前 {topPlaces.length} 名）
+                Gemini 推薦前 {topPlaces.length} 名
               </p>
               {topPlaces.map((place, i) => (
                 <RestaurantCard
