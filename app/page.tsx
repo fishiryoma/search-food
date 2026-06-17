@@ -160,7 +160,7 @@ export default function Home() {
 
       <div className="px-4 py-3 bg-white border-b border-zinc-100 shadow-sm flex items-center justify-between">
         <div>
-          <h1 className="text-base font-semibold text-zinc-900">附近餐廳</h1>
+          <h1 className="text-base font-semibold text-zinc-900">附近1公里內的餐廳</h1>
           <p className="text-xs text-zinc-400 mt-0.5">
             {userContext && placesLoading && "搜尋餐廳中..."}
             {userContext && (autoAnalyzing || analyzing) && !placesLoading && "AI 分析中..."}
