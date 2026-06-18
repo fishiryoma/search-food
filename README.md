@@ -1,7 +1,3 @@
-<p align="center">
-  <img src="public/icon.png" width="80" alt="附近吃什麼" />
-</p>
-
 # 附近吃什麼
 
 步行可達餐廳推薦 App。定位後回答兩個問題，AI 從 1 公里內的餐廳挑出最符合你今天胃口的幾間。
