@@ -66,7 +66,7 @@ export default function QuestionnaireOverlay({ onComplete }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm px-6 gap-8">
       <div className="relative overflow-hidden">
-        <Image src="/icon.png" alt="app icon" width={52} height={52} className="" />
+        <Image src="/icon.png" alt="app icon" width={80} height={80} priority />
       </div>
       <div className="w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden">
         {/* navigation row：< dots > */}

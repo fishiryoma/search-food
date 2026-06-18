@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "附近餐廳推薦",
+  title: "附近吃什麼",
   description: "步行 1km 內最適合你的餐廳",
 };
 

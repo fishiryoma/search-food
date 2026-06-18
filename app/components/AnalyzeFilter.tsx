@@ -40,7 +40,8 @@ function ChipRow({
 }
 
 export default function AnalyzeFilter() {
-  const { analyses, selectedDishes, selectedFlavors, toggleDish, toggleFlavor } = useFilterStore();
+  const { analyses, selectedDishes, selectedFlavors, toggleDish, toggleFlavor, clearFilters } =
+    useFilterStore();
   const [isOpen, setIsOpen] = useState(false);
 
   if (analyses.length === 0) return null;
@@ -50,8 +51,20 @@ export default function AnalyzeFilter() {
 
   if (allDishes.length === 0 && allFlavors.length === 0) return null;
 
+  const hasActiveFilters = selectedFlavors.length > 0 || selectedDishes.length > 0;
+
   return (
     <div className="bg-zinc-50 border-b border-zinc-200 px-4 py-2 flex flex-col gap-2">
+      {hasActiveFilters && (
+        <div className="flex justify-start">
+          <button
+            onClick={clearFilters}
+            className="text-xs text-zinc-400 hover:text-zinc-600  hover:border-zinc-500 transition-colors cursor-pointer border border-zinc-300 px-3 py-1 border-dashed"
+          >
+            清除篩選
+          </button>
+        </div>
+      )}
       {allFlavors.length > 0 && (
         <>
           <p className="text-xs font-medium text-blue-600">口味偏好篩選</p>
@@ -69,7 +82,7 @@ export default function AnalyzeFilter() {
             onClick={() => setIsOpen((v) => !v)}
             className="flex items-center gap-1.5 cursor-pointer w-fit"
           >
-            <p className="text-xs font-medium text-amber-600">想吃哪一道菜？</p>
+            <p className="text-xs font-medium text-amber-600">推薦菜單</p>
             {selectedDishes.length > 0 && (
               <span className="text-xs bg-amber-500 text-white px-1.5 py-0.5 rounded-full leading-none">
                 {selectedDishes.length}

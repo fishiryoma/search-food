@@ -10,6 +10,7 @@ interface FilterState {
   setAnalyses: (analyses: PlaceAnalysis[]) => void;
   toggleFlavor: (flavor: string) => void;
   toggleDish: (dish: string) => void;
+  clearFilters: () => void;
   reset: () => void;
 }
 
@@ -30,5 +31,6 @@ export const useFilterStore = create<FilterState>((set) => ({
         ? s.selectedDishes.filter((d) => d !== dish)
         : [...s.selectedDishes, dish],
     })),
+  clearFilters: () => set({ selectedFlavors: [], selectedDishes: [] }),
   reset: () => set({ analyses: [], selectedFlavors: [], selectedDishes: [] }),
 }));
