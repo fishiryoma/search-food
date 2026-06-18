@@ -99,4 +99,28 @@
 
 ---
 
+## ADR-008：重新分析改為先重打 nearby，再執行 AI 分析
+
+- **日期**：2026-06-18
+- **背景**：「重新分析」原本只對同一批餐廳重送 Gemini，因為 Gemini 對相同輸入的輸出差異極小，結果幾乎不變，對使用者沒有意義。
+- **決策**：`handleReanalyze` 改為先呼叫 `fetchNearby` 取得最新餐廳清單，更新 `nearbyOverride`（同步地圖 markers），再對新餐廳清單執行 `runAnalyze`。
+- **理由**：
+  - 重打 nearby 可能取得略不同的餐廳排序與組合（Places API 兩批次合併去重），提供更實質的重試效果
+  - 使用者操作「重新分析」預期的是「換一批推薦」，而非「用同樣資料再算一次」
+- **後果與取捨**：重新分析耗時增加（多一次 nearby 網路請求），以全螢幕 loading overlay 阻擋操作，告知使用者等待。
+
+---
+
+## ADR-009：Gemini 分析補齊策略 — Prompt 總數限制 + 後端 fallback
+
+- **日期**：2026-06-18
+- **背景**：Gemini 並不保證回傳的 analyses 陣列長度等於傳入的餐廳數，可能漏傳部分餐廳，導致前端 `analysisMap` 查不到對應資料。
+- **決策**：雙層防護：
+  1. **Prompt 層**：明確告知 Gemini 餐廳總數（「以下共有 N 間餐廳，analyses 陣列必須包含全部 N 筆」），降低漏傳機率。
+  2. **後端補齊**：回應後比對 placeId 差集，對漏傳的餐廳補上 `{ cuisine: [], signature_dishes: [], flavor: [], summary: "", score: 0 }` fallback，確保前端一定拿到每間餐廳的 analysis entry。
+- **理由**：前端篩選邏輯依賴 analysis 是否存在做行為分支，缺少 analysis 會造成篩選 bug；後端補齊比前端防禦更根本。
+- **後果與取捨**：fallback 的 score: 0 會讓這些餐廳永遠排在最後，無 summary 也不會顯示摘要。這些餐廳仍可被使用者透過「查看更多推薦」看到。
+
+---
+
 <!-- 新的 ADR 往下加 -->

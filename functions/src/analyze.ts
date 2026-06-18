@@ -114,11 +114,12 @@ export const analyze = onRequest(
         },
       });
 
+      const inputPlaces = places as InputPlace[];
       const contextLine = ctx
         ? `使用者預算：${ctx.budget} 元\n使用者偏好：${ctx.preferences.length > 0 ? ctx.preferences.join("、") : "無特別偏好"}\n\n`
         : "";
 
-      const placesText = (places as InputPlace[])
+      const placesText = inputPlaces
         .map(
           (p) =>
             `ID: ${p.placeId}\n名稱: ${p.name}\n類型: ${p.types.join(", ")}\n評分: ${p.rating ?? "無"}\n地址: ${p.vicinity ?? "無"}`
@@ -127,9 +128,24 @@ export const analyze = onRequest(
 
       const result = await generateWithRetry(
         model,
-        `${contextLine}請分析以下餐廳並給出推薦分數：\n\n${placesText}`
+        `${contextLine}以下共有 ${inputPlaces.length} 間餐廳，請為每一間提供分析，analyses 陣列必須包含全部 ${inputPlaces.length} 筆，不可遺漏任何一間：\n\n${placesText}`
       );
       const validated = AnalyzeResponseSchema.parse(JSON.parse(result.response.text()));
+
+      // 補齊 Gemini 遺漏的餐廳
+      const returnedIds = new Set(validated.analyses.map((a) => a.placeId));
+      const missing = inputPlaces.filter((p) => !returnedIds.has(p.placeId));
+      if (missing.length > 0) {
+        const fallbacks = missing.map((p) => ({
+          placeId: p.placeId,
+          cuisine: [],
+          signature_dishes: [],
+          flavor: [],
+          summary: "",
+          score: 0,
+        }));
+        validated.analyses.push(...fallbacks);
+      }
 
       res.json(validated);
     } catch (err) {

@@ -50,6 +50,7 @@ tmp-next/
 functions/lib/
 functions/.env
 functions/.secret.local
+.firebase/
 firebase-debug.log
 firestore-debug.log
 ui-debug.log

@@ -64,7 +64,10 @@ export default function QuestionnaireOverlay({ onComplete }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm px-6 gap-10">
+    <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm px-6 gap-8">
+      <div className="relative overflow-hidden">
+        <Image src="/icon.png" alt="app icon" width={52} height={52} className="" />
+      </div>
       <div className="w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden">
         {/* navigation row：< dots > */}
         <div className="flex items-center justify-between px-5 pt-5">
@@ -88,7 +91,11 @@ export default function QuestionnaireOverlay({ onComplete }: Props) {
           <button
             onClick={() => setStep(2)}
             disabled={step === 2}
-            className="w-9 h-9 flex items-center justify-center rounded-full text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 disabled:invisible transition-colors cursor-pointer"
+            className={`w-9 h-9 flex items-center justify-center rounded-full transition-colors cursor-pointer disabled:invisible ${
+              step === 1
+                ? "bg-blue-600 text-white hover:bg-blue-700"
+                : "text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100"
+            }`}
           >
             <ChevronRight />
           </button>
@@ -98,9 +105,7 @@ export default function QuestionnaireOverlay({ onComplete }: Props) {
           {step === 1 && (
             <>
               <p className="text-center text-xs text-zinc-400 mb-1">問題 1 / 2</p>
-              <h2 className="text-center text-lg font-bold text-zinc-900 mb-5">
-                今天的預算大概是？
-              </h2>
+              <h2 className="text-center text-lg font-bold text-zinc-900 mb-5">選擇預算</h2>
               <div className="flex flex-col gap-3">
                 {BUDGET_OPTIONS.map((opt) => (
                   <button
@@ -116,14 +121,27 @@ export default function QuestionnaireOverlay({ onComplete }: Props) {
                   </button>
                 ))}
               </div>
+              <button
+                onClick={() => onComplete({ budget, preferences: [] })}
+                className="w-full mt-3 py-2 text-sm text-zinc-400 hover:text-zinc-600 transition-colors cursor-pointer"
+              >
+                不選偏好直接開始搜尋
+              </button>
             </>
           )}
 
           {step === 2 && (
             <>
               <p className="text-center text-xs text-zinc-400 mb-1">問題 2 / 2</p>
-              <h2 className="text-center text-lg font-bold text-zinc-900 mb-1">想吃什麼嗎？</h2>
-              <p className="text-center text-xs text-zinc-400 mb-5">可複選</p>
+              <h2 className="text-center text-lg font-bold text-zinc-900 mb-1">選擇喜好</h2>
+              <div className="flex justify-center gap-3 mb-5">
+                <span className="text-xs text-amber-600 border border-dashed border-amber-300 bg-amber-50 px-2.5 py-1">
+                  可複選
+                </span>
+                <span className="text-xs text-amber-600 border border-dashed border-amber-300 bg-amber-50 px-2.5 py-1">
+                  可不選
+                </span>
+              </div>
               <div className="flex flex-wrap gap-2 justify-center mb-6">
                 {PREFERENCE_OPTIONS.map((pref) => {
                   const selected = preferences.includes(pref);
@@ -148,18 +166,9 @@ export default function QuestionnaireOverlay({ onComplete }: Props) {
               >
                 開始搜尋
               </button>
-              <button
-                onClick={() => onComplete({ budget: budget!, preferences: [] })}
-                className="w-full mt-2 py-2 text-sm text-zinc-400 hover:text-zinc-600 transition-colors cursor-pointer"
-              >
-                略過，直接搜尋
-              </button>
             </>
           )}
         </div>
-      </div>
-      <div className="relative overflow-hidden">
-        <Image src="/icon.png" alt="app icon" width={48} height={48} className="rounded-full" />
       </div>
     </div>
   );

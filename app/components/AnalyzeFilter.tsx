@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useFilterStore } from "@/store/useFilterStore";
 
 function ChipRow({
@@ -40,6 +41,7 @@ function ChipRow({
 
 export default function AnalyzeFilter() {
   const { analyses, selectedDishes, selectedFlavors, toggleDish, toggleFlavor } = useFilterStore();
+  const [isOpen, setIsOpen] = useState(false);
 
   if (analyses.length === 0) return null;
 
@@ -50,26 +52,51 @@ export default function AnalyzeFilter() {
 
   return (
     <div className="bg-zinc-50 border-b border-zinc-200 px-4 py-2 flex flex-col gap-2">
-      {allDishes.length > 0 && (
-        <>
-          <p className="text-xs font-medium text-amber-600">推薦品項</p>
-          <ChipRow
-            items={allDishes}
-            selected={selectedDishes}
-            onToggle={toggleDish}
-            variant="dish"
-          />
-        </>
-      )}
       {allFlavors.length > 0 && (
         <>
-          <p className="text-xs font-medium text-blue-600">口味偏好</p>
+          <p className="text-xs font-medium text-blue-600">口味偏好篩選</p>
           <ChipRow
             items={allFlavors}
             selected={selectedFlavors}
             onToggle={toggleFlavor}
             variant="flavor"
           />
+        </>
+      )}
+      {allDishes.length > 0 && (
+        <>
+          <button
+            onClick={() => setIsOpen((v) => !v)}
+            className="flex items-center gap-1.5 cursor-pointer w-fit"
+          >
+            <p className="text-xs font-medium text-amber-600">想吃哪一道菜？</p>
+            {selectedDishes.length > 0 && (
+              <span className="text-xs bg-amber-500 text-white px-1.5 py-0.5 rounded-full leading-none">
+                {selectedDishes.length}
+              </span>
+            )}
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className={`text-amber-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`}
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+          {isOpen && (
+            <ChipRow
+              items={allDishes}
+              selected={selectedDishes}
+              onToggle={toggleDish}
+              variant="dish"
+            />
+          )}
         </>
       )}
     </div>

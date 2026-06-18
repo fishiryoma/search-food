@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { usePlaces } from "@/hooks/usePlaces";
@@ -9,8 +9,9 @@ import AnalyzeFilter from "@/app/components/AnalyzeFilter";
 import RestaurantCard from "@/app/components/RestaurantCard";
 import QuestionnaireOverlay from "@/app/components/QuestionnaireOverlay";
 import LoadingSpinner from "@/app/components/LoadingSpinner";
-import { fetchAnalyze } from "@/lib/api";
-import type { UserContext } from "@/lib/schemas";
+import { fetchAnalyze, fetchNearby } from "@/lib/api";
+import { BUDGET_OPTIONS } from "@/lib/questionnaire";
+import type { UserContext, Place } from "@/lib/schemas";
 
 const MapView = dynamic(() => import("@/app/components/MapView"), { ssr: false });
 
@@ -20,15 +21,18 @@ export default function Home() {
   const [userContext, setUserContext] = useState<UserContext | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
+  const [nearbyOverride, setNearbyOverride] = useState<Place[] | null>(null);
+  const [displayCount, setDisplayCount] = useState(5);
   const autoAnalysisFiredRef = useRef(false);
 
   const { coords, error: geoError } = useGeolocation(true);
   // 只有在使用者完成問卷後才開始搜尋
   const {
-    places,
+    places: fetchedPlaces,
     error: placesError,
     isLoading: placesLoading,
   } = usePlaces(userContext ? coords : null, 1000);
+  const places = nearbyOverride ?? fetchedPlaces;
 
   const { analyses, selectedFlavors, selectedDishes, setAnalyses, reset } = useFilterStore();
 
@@ -40,7 +44,7 @@ export default function Home() {
       ? validPlaces
       : validPlaces.filter((p) => {
           const a = analysisMap.get(p.placeId);
-          if (!a) return true;
+          if (!a) return selectedFlavors.length === 0 && selectedDishes.length === 0;
           const flavorMatch =
             selectedFlavors.length === 0 || a.flavor.some((f) => selectedFlavors.includes(f));
           const dishMatch =
@@ -49,16 +53,27 @@ export default function Home() {
           return flavorMatch && dishMatch;
         });
 
-  const topPlaces = [...finalPlaces]
-    .sort((a, b) => {
-      if (analyses.length > 0) {
-        const scoreA = analysisMap.get(a.placeId)?.score ?? 0;
-        const scoreB = analysisMap.get(b.placeId)?.score ?? 0;
-        return scoreB - scoreA;
+  const sortedPlaces = [...finalPlaces].sort((a, b) => {
+    if (analyses.length > 0) {
+      const scoreA = analysisMap.get(a.placeId)?.score ?? 0;
+      const scoreB = analysisMap.get(b.placeId)?.score ?? 0;
+      return scoreB - scoreA;
+    }
+    return (b.rating ?? 0) - (a.rating ?? 0);
+  });
+  const topPlaces = sortedPlaces.slice(0, displayCount);
+
+  const runAnalyze = useCallback(
+    async (targetPlaces: Place[]) => {
+      if (!userContext) return;
+      try {
+        setAnalyses(await fetchAnalyze(targetPlaces, userContext));
+      } catch (err) {
+        setAnalyzeError(err instanceof Error ? err.message : "分析失敗");
       }
-      return (b.rating ?? 0) - (a.rating ?? 0);
-    })
-    .slice(0, 5);
+    },
+    [userContext, setAnalyses]
+  );
 
   // 派生值：正在自動分析中（places 已到 + 尚無 analyses + 無錯誤）
   const autoAnalyzing =
@@ -70,28 +85,35 @@ export default function Home() {
 
   // 搜尋完成後自動觸發 AI 分析，只觸發一次
   useEffect(() => {
-    if (!autoAnalyzing || autoAnalysisFiredRef.current || !userContext) return;
+    if (!autoAnalyzing || autoAnalysisFiredRef.current) return;
     autoAnalysisFiredRef.current = true;
-    fetchAnalyze(validPlaces, userContext)
-      .then(setAnalyses)
-      .catch((err) => setAnalyzeError(err instanceof Error ? err.message : "分析失敗"));
-  }, [autoAnalyzing, validPlaces, userContext, setAnalyses]);
+    runAnalyze(validPlaces);
+  }, [autoAnalyzing, validPlaces, runAnalyze]);
 
   function handleReset() {
     reset();
     setUserContext(null);
     setAnalyzeError(null);
+    setNearbyOverride(null);
+    setDisplayCount(5);
     autoAnalysisFiredRef.current = false;
   }
 
-  function handleReanalyze() {
-    if (!userContext) return;
+  async function handleReanalyze() {
+    if (!userContext || !coords) return;
     setAnalyzing(true);
     setAnalyzeError(null);
-    fetchAnalyze(validPlaces, userContext)
-      .then(setAnalyses)
-      .catch((err) => setAnalyzeError(err instanceof Error ? err.message : "分析失敗"))
-      .finally(() => setAnalyzing(false));
+    setDisplayCount(5);
+    try {
+      const freshPlaces = await fetchNearby(coords.lat, coords.lng, 1000);
+      setNearbyOverride(freshPlaces);
+      const freshValid = freshPlaces.filter((p) => !p.types.includes("convenience_store"));
+      await runAnalyze(freshValid);
+    } catch (err) {
+      setAnalyzeError(err instanceof Error ? err.message : "分析失敗");
+    } finally {
+      setAnalyzing(false);
+    }
   }
 
   if (DEBUG_LOADING) {
@@ -154,13 +176,19 @@ export default function Home() {
   if (!coords) return null;
 
   return (
-    <main className="h-screen flex flex-col">
+    <main className="flex flex-col">
       {/* 問卷 overlay：取得座標後、完成問卷前顯示 */}
       {!userContext && <QuestionnaireOverlay onComplete={setUserContext} />}
 
+      {analyzing && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <LoadingSpinner variant="overlay" label="重新分析中..." />
+        </div>
+      )}
+
       <div className="px-4 py-3 bg-white border-b border-zinc-100 shadow-sm flex items-center justify-between">
         <div>
-          <h1 className="text-base font-semibold text-zinc-900">附近1公里內的餐廳</h1>
+          <h1 className="text-base font-semibold text-zinc-900">附近 1 公里內的餐廳</h1>
           <p className="text-xs text-zinc-400 mt-0.5">
             {userContext && placesLoading && "搜尋餐廳中..."}
             {userContext && (autoAnalyzing || analyzing) && !placesLoading && "AI 分析中..."}
@@ -172,6 +200,21 @@ export default function Home() {
               !placesError &&
               `顯示 ${finalPlaces.length} / ${validPlaces.length} 間餐廳`}
           </p>
+          {userContext && (
+            <div className="flex flex-wrap gap-x-1 gap-y-0.5 mt-1">
+              <span className="text-xs bg-zinc-100 text-zinc-500 px-1.5 py-0.5 rounded">
+                {BUDGET_OPTIONS.find((o) => o.value === userContext.budget)?.label}
+              </span>
+              {userContext.preferences.map((pref) => (
+                <span
+                  key={pref}
+                  className="text-xs bg-zinc-100 text-zinc-500 px-1.5 py-0.5 rounded"
+                >
+                  {pref}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {analyses.length > 0 && (
@@ -208,18 +251,18 @@ export default function Home() {
         <div className="px-4 py-2 bg-red-50 text-red-600 text-xs">{analyzeError}</div>
       )}
       <AnalyzeFilter />
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex flex-col">
         <div className="h-[45vh] shrink-0">
           <MapView center={coords} radius={1000} places={finalPlaces} />
         </div>
-        <div className="flex-1 overflow-y-auto bg-zinc-50">
+        <div className="bg-zinc-50">
           {!userContext || placesLoading ? (
             <div className="flex items-center justify-center p-8">
               <p className="text-xs text-zinc-400">
                 {!userContext ? "請先完成上方問卷" : "搜尋中..."}
               </p>
             </div>
-          ) : autoAnalyzing || analyzing ? (
+          ) : autoAnalyzing ? (
             <div className="flex items-center justify-center p-10">
               <LoadingSpinner variant="inline" />
             </div>
@@ -247,6 +290,14 @@ export default function Home() {
                   rank={i + 1}
                 />
               ))}
+              {displayCount < sortedPlaces.length && (
+                <button
+                  onClick={() => setDisplayCount((c) => c + 5)}
+                  className="w-full py-3 text-sm text-zinc-500 hover:text-zinc-700 hover:bg-zinc-100 transition-colors cursor-pointer"
+                >
+                  查看更多推薦
+                </button>
+              )}
             </>
           )}
         </div>

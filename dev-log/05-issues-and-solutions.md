@@ -62,3 +62,13 @@
 - **問題描述**：Functions 部署成功後，前端打 `/nearby` 出現 CORS 錯誤（`strict-origin-when-cross-origin`）。實際原因是 Cloud Run IAM 預設「需要驗證」，請求在 IAM 層被擋（403）而從未進到 Function 程式碼，因此 CORS header 從未被加入回應。
 - **最終解法**：GCP Console → Cloud Run → `nearby` / `analyze` → 安全性 → 驗證 → 改為「允許公開存取」。兩個服務各別設定。
 - **補充**：函式程式碼的 CORS 設定（`utils.ts` 的 `ALLOWED_ORIGINS`）本身正確，問題出在 Cloud Run IAM 層比 Function 程式碼更早攔截請求。
+
+---
+
+## 2026-06-18｜篩選邏輯 Bug — 無 analysis 的餐廳在有選 chip 時仍通過篩選
+
+- **問題描述**：使用者選取推薦品項 chip（如「割包」）後，前五名中仍出現明確沒有該品項的餐廳。
+- **根本原因**：`finalPlaces` 篩選邏輯中有一行 `if (!a) return true`，導致在 `analysisMap` 找不到對應 analysis 的餐廳，不管選了什麼 chip 一律放行。
+  - 這種情況真實發生於：`handleReanalyze` 執行期間 `setNearbyOverride(freshPlaces)` 先更新地圖，而 `runAnalyze` 尚未完成，造成短暫的 places / analyses 不同步。
+  - 另外 Gemini 可能漏傳部分餐廳的 analysis，造成 `analysisMap` 查不到該 placeId。
+- **最終解法**：改為 `if (!a) return selectedFlavors.length === 0 && selectedDishes.length === 0`——只有在完全沒有選取任何 chip 時，無 analysis 的餐廳才放行；有選 chip 時一律排除。
