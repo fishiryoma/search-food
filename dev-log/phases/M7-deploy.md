@@ -13,20 +13,22 @@
 2026-06-17
 
 ## 部署前必須手動完成（GCP Console）
-- [ ] Budget Alert：$5 警告通知 / $20 強制停止（GCP Console → Billing → Budgets & alerts）
-- [ ] Maps JS API Key：加 HTTP Referrer 白名單，限定 `https://search-food-497209.web.app/*`（GCP Console → APIs & Services → Credentials）
-- [ ] Google Places API Key：加 IP 限制（Cloud Functions 對外 IP），防止 key 外洩後被濫用
+- [x] Maps JS API Key：加 HTTP Referrer 白名單，限定 `https://search-food-497209.web.app/*`（GCP Console → APIs & Services → Credentials）
+- [x] Budget Alert（GCP Console → Billing → Budgets & alerts）— 補記於 2026-09-23：已設定，$5/月，50%/90% 門檻通知
+- [ ] Google Places API Key：加 IP 限制（Cloud Functions 對外 IP）— 補記於 2026-09-23：評估後決定不做，改採 API restriction（限制為只能呼叫 Places API）+ Budget Alert 作為替代防線，詳細理由見 `phases/M6-cache-security.md`
 
 ## 實作內容
-- [ ] `firebase init hosting,functions,firestore`
-- [ ] `firebase.json` 設定（rewrite、headers）
-- [ ] `firebase functions:secrets:set GOOGLE_PLACES_KEY`
-- [ ] `firebase functions:secrets:set GEMINI_API_KEY`
-- [ ] `next build`（`output: 'export'`）確認無 SSR 依賴
-- [ ] `firebase deploy`
-- [ ] 手機 iOS Safari / Android Chrome 實地測試
-- [ ] Firebase Console 確認 Functions 執行正常
-- [ ] GCP Console 確認 Places API 用量符合預期
+- [x] `firebase init hosting,functions,firestore`
+- [x] `firebase.json` 設定（rewrite、headers）
+- [x] `firebase functions:secrets:set GOOGLE_PLACES_KEY`
+- [x] `firebase functions:secrets:set GEMINI_API_KEY`
+- [x] `next build`（`output: 'export'`）確認無 SSR 依賴
+- [x] `firebase deploy`
+- [x] 手機 iOS Safari / Android Chrome 實地測試
+- [x] Firebase Console 確認 Functions 執行正常
+- [x] GCP Console 確認 Places API 用量符合預期
+
+> 補記於 2026-09-21：以上原始清單當時未同步勾選，依「完成項目」與「遇到的問題」章節內容回填，實際完成狀態以本次補勾為準。
 
 ## 完成項目
 - Firebase Hosting 部署成功，URL：https://search-food-497209.web.app

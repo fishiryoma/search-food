@@ -26,7 +26,7 @@
 
 ### API Key 保護策略
 
-- **Maps JS API Key**（瀏覽器端）：設 HTTP Referrer 白名單（`localhost:3000`、`your-domain.web.app`）
+- **Maps JS API Key**（瀏覽器端）：設 HTTP Referrer 白名單（`localhost:5173`、`your-domain.web.app`）
 - **Places API Key**（伺服器端）：存 Firebase Secret Manager，只在 Cloud Functions 中使用，**絕不出現在前端**
 - 兩個 Key 分開建立，最小權限原則
 
@@ -35,13 +35,15 @@
 - Nearby Search 單次最多回傳 **20 筆**（Basic），進階需分頁
 - `priceLevel` 欄位：1（經濟）到 4（高檔），部分餐廳無此欄位
 - `types` 陣列：每間餐廳可有多個類型（如 `["restaurant", "food", "establishment"]`）
-- QPS 限制：預設 50 QPS（個人使用完全夠用）
+- QPS(Queries Per Second) 限制：預設 50 QPS（個人使用完全夠用）
 
 ---
 
-## Anthropic Claude API
+## Anthropic Claude API（初期研究方案，未實際採用）
 
-### 選用模型
+> **後續更新（2026-09-21）**：M4 實作時已改用 Google Gemini（見下方章節），本節為初期研究記錄，保留供參考，非目前實際使用的 API。決策紀錄見 `02-architecture-decisions.md` ADR-011。
+
+### 選用模型（原規劃）
 
 **Claude Haiku 4.5**（`claude-haiku-4-5-20251001`）
 
@@ -72,4 +74,24 @@
 - **每次分析：$0.004**，個人使用月費 < $0.5
 
 ---
+
+## Google Gemini API
+
+### 選用模型
+
+目前實際使用 **Gemini 3.5 Flash Lite**（`gemini-3.5-flash-lite`），沿革：M4（2026-05-30）最初採用 `gemini-2.0-flash` → 2026-09-21 升級為 `gemini-3.5-flash-lite`（詳見 ADR-011）。
+
+- 原因：Flash Lite 系列成本低、延遲低，符合 ADR-002「控制 LLM API 費用」的原則
+- SDK：`@google/generative-ai`，原生支援 `responseSchema` 強制回傳 JSON，省去手動解析與大部分格式錯誤處理
+
+### Prompt 設計思路
+
+- System instruction：固定描述任務、輸出格式
+- User message：傳入粗篩後的餐廳清單（名稱、types、評分）+ `userContext`（預算、口味偏好）
+- 輸出：`responseSchema` 強制 JSON，欄位包含 `cuisine`、`signature_dishes`、`flavor`、`summary`、`score`（見 ADR-002、M4 phase log 的增強版章節）
+
+### 費用
+
+尚未像 Claude 方案一樣做過正式的單價試算與月費估算；個人使用規模下目前無異常帳單警示。若日後用量成長，建議比照上方 Claude 試算方式，用 Google AI Studio 的實際定價補上這節。
+
 <!-- 日後研究其他 API 往下加 -->

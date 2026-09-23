@@ -123,4 +123,36 @@
 
 ---
 
+## ADR-010：前端框架從 Next.js 改為 Vite + React
+
+- **日期**：2026-09-20
+- **背景**：專案自 M1 起使用 `output: 'export'` 純靜態輸出，未使用 SSR、ISR、Route Handlers、Image Optimization 等 Next.js 核心能力（ADR-001 已確立後端走 Cloud Functions），Next.js 在此架構下只剩下建置工具的角色。
+- **決策**：改用 Vite + React（無 router，單一 `App.tsx`），移除 Next.js 依賴。
+- **理由**：
+  - 專案本質是純 SPA，Vite 開發啟動與 HMR 更快、設定更單純
+  - Next 專屬 API（`next/image`、`next/font/google`、`next/dynamic`、App Router 檔案慣例）在此專案中都是可直接替換的裝飾層，沒有不可替代的價值
+  - 減少一層框架抽象，降低未來升級/維護成本
+- **放棄的替代方案**：維持 Next.js — 可行但持續背負用不到的框架複雜度（App Router 慣例、`next.config.ts`、`eslint-config-next` 等）
+- **後果與取捨**：
+  - 目錄結構改為標準 Vite `src/` 佈局（`app/` → `src/`，`hooks/`、`lib/`、`store/` 移入 `src/` 下）
+  - 環境變數前綴由 `NEXT_PUBLIC_*` 改為 `VITE_*`（`import.meta.env` 取代 `process.env`）
+  - `next/font/google`（Geist）改用 `@fontsource/geist-sans`、`@fontsource/geist-mono` 自行 bundle 字型，效果相同
+  - Firebase Hosting 的 `public` 目錄由 `out` 改為 `dist`
+  - Tailwind v4 改用 `@tailwindcss/vite` plugin，移除 PostCSS 設定檔
+  - ESLint 從 `eslint-config-next` 改為 `typescript-eslint` + `eslint-plugin-react-hooks` + `eslint-plugin-react-refresh` 手動組裝
+
+---
+
+## ADR-011：AI 分析模型改用 Google Gemini，並升級至 3.5 Flash Lite
+
+- **日期**：2026-09-21
+- **背景**：`dev-log/00-overview.md` 原記載 AI 分析採用 Anthropic Claude Haiku 4.5，但實際程式碼（`functions/src/analyze.ts`）早已使用 Google Gemini（`GoogleGenerativeAI` SDK + `responseSchema` 結構化輸出），顯示此決策先前未留下 ADR 紀錄，本條為補記；同時將模型版本從 `gemini-3.1-flash-lite` 升級至 `gemini-3.5-flash-lite`。
+- **決策**：AI 分析端點使用 Google Gemini 3.5 Flash Lite。
+- **理由**：
+  - Flash Lite 系列成本低、延遲低，符合 ADR-002「控制 LLM API 費用」的原則
+  - Gemini SDK 原生支援 `responseSchema`，可直接約束回傳 JSON 結構，簡化 ADR-009 提到的補齊邏輯
+  - 3.5 版為既有 3.1 版的後續型號，沿用同一模型家族與呼叫介面，升級成本低
+- **放棄的替代方案**：Anthropic Claude Haiku 4.5 — 原始規劃選項，未在程式碼中實際採用
+- **後果與取捨**：`00-overview.md` 的技術選型摘要已同步更新為 Gemini 3.5 Flash Lite，避免文件與程式碼不一致
+
 <!-- 新的 ADR 往下加 -->
