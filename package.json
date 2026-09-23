@@ -7,32 +7,39 @@
     "pnpm": ">=9"
   },
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint",
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },
   "dependencies": {
+    "@fontsource/geist-mono": "^5.2.8",
+    "@fontsource/geist-sans": "^5.2.8",
     "@vis.gl/react-google-maps": "^1.8.3",
-    "next": "16.2.6",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "zod": "^4.4.3",
     "zustand": "^5.0.13"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
+    "@eslint/js": "^9",
+    "@tailwindcss/vite": "^4",
     "@types/google.maps": "^3.64.1",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^4.3.4",
     "eslint": "^9",
-    "eslint-config-next": "16.2.6",
     "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^5.1.0",
+    "eslint-plugin-react-refresh": "^0.4.16",
+    "globals": "^15.14.0",
     "prettier": "^3.8.3",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "typescript-eslint": "^8.19.1",
+    "vite": "^6.0.7"
   }
 }

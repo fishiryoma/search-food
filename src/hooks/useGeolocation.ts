@@ -1,5 +1,3 @@
-"use client";
-
 import { useState, useEffect } from "react";
 import type { GeoCoords } from "@/lib/schemas";
 

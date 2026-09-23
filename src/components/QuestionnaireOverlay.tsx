@@ -1,7 +1,4 @@
-"use client";
-
 import { useState } from "react";
-import Image from "next/image";
 import type { UserContext } from "@/lib/schemas";
 import { BUDGET_OPTIONS, PREFERENCE_OPTIONS } from "@/lib/questionnaire";
 
@@ -66,7 +63,7 @@ export default function QuestionnaireOverlay({ onComplete }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm px-6 gap-8">
       <div className="relative overflow-hidden">
-        <Image src="/icon.png" alt="app icon" width={80} height={80} priority />
+        <img src="/icon.png" alt="app icon" width={80} height={80} />
       </div>
       <div className="w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden">
         {/* navigation row：< dots > */}

@@ -1,6 +1,4 @@
 /// <reference types="@types/google.maps" />
-"use client";
-
 import { useEffect, useState } from "react";
 import {
   APIProvider,
@@ -11,6 +9,7 @@ import {
 } from "@vis.gl/react-google-maps";
 import type { GeoCoords, Place } from "@/lib/schemas";
 import { useWalkingTime } from "@/hooks/useWalkingTime";
+import { DEFAULT_RADIUS_METERS } from "@/lib/constants";
 
 interface MapViewProps {
   center: GeoCoords;
@@ -43,8 +42,12 @@ function RadiusCircle({ center, radius }: { center: GeoCoords; radius: number })
 
 const PRICE = ["", "$", "$$", "$$$", "$$$$"];
 
-export default function MapView({ center, radius = 1000, places = [] }: MapViewProps) {
-  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY ?? "";
+export default function MapView({
+  center,
+  radius = DEFAULT_RADIUS_METERS,
+  places = [],
+}: MapViewProps) {
+  const apiKey = import.meta.env.VITE_GOOGLE_MAPS_KEY ?? "";
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const walkingMinutes = useWalkingTime(
     center,
@@ -58,7 +61,7 @@ export default function MapView({ center, radius = 1000, places = [] }: MapViewP
         defaultCenter={center}
         defaultZoom={14}
         gestureHandling="greedy"
-        mapId={process.env.NEXT_PUBLIC_GOOGLE_MAPS_ID ?? "DEMO_MAP_ID"}
+        mapId={import.meta.env.VITE_GOOGLE_MAPS_ID ?? "DEMO_MAP_ID"}
         onClick={() => setSelectedPlace(null)}
       >
         <AdvancedMarker position={center} title="你的位置">

@@ -1,5 +1,3 @@
-"use client";
-
 import { useState, useEffect } from "react";
 import { fetchNearby } from "@/lib/api";
 import type { GeoCoords, Place } from "@/lib/schemas";

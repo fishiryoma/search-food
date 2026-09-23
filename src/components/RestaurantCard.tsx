@@ -1,5 +1,3 @@
-"use client";
-
 import type { Place, PlaceAnalysis } from "@/lib/schemas";
 
 const PRICE_LABEL: Record<number, string> = { 1: "$", 2: "$$", 3: "$$$", 4: "$$$$" };

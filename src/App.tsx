@@ -1,23 +1,20 @@
-"use client";
-
 import { useState, useEffect, useRef, useCallback } from "react";
-import dynamic from "next/dynamic";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import { usePlaces } from "@/hooks/usePlaces";
 import { useFilterStore } from "@/store/useFilterStore";
-import AnalyzeFilter from "@/app/components/AnalyzeFilter";
-import RestaurantCard from "@/app/components/RestaurantCard";
-import QuestionnaireOverlay from "@/app/components/QuestionnaireOverlay";
-import LoadingSpinner from "@/app/components/LoadingSpinner";
+import AnalyzeFilter from "@/components/AnalyzeFilter";
+import RestaurantCard from "@/components/RestaurantCard";
+import QuestionnaireOverlay from "@/components/QuestionnaireOverlay";
+import LoadingSpinner from "@/components/LoadingSpinner";
+import MapView from "@/components/MapView";
 import { fetchAnalyze, fetchNearby } from "@/lib/api";
 import { BUDGET_OPTIONS } from "@/lib/questionnaire";
+import { DEFAULT_RADIUS_METERS } from "@/lib/constants";
 import type { UserContext, Place } from "@/lib/schemas";
-
-const MapView = dynamic(() => import("@/app/components/MapView"), { ssr: false });
 
 const DEBUG_LOADING = false;
 
-export default function Home() {
+export default function App() {
   const [userContext, setUserContext] = useState<UserContext | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
@@ -31,7 +28,7 @@ export default function Home() {
     places: fetchedPlaces,
     error: placesError,
     isLoading: placesLoading,
-  } = usePlaces(userContext ? coords : null, 1000);
+  } = usePlaces(userContext ? coords : null, DEFAULT_RADIUS_METERS);
   const places = nearbyOverride ?? fetchedPlaces;
 
   const { analyses, selectedFlavors, selectedDishes, setAnalyses, reset } = useFilterStore();
@@ -105,7 +102,7 @@ export default function Home() {
     setAnalyzeError(null);
     setDisplayCount(5);
     try {
-      const freshPlaces = await fetchNearby(coords.lat, coords.lng, 1000);
+      const freshPlaces = await fetchNearby(coords.lat, coords.lng, DEFAULT_RADIUS_METERS);
       setNearbyOverride(freshPlaces);
       const freshValid = freshPlaces.filter((p) => !p.types.includes("convenience_store"));
       await runAnalyze(freshValid);
@@ -253,7 +250,7 @@ export default function Home() {
       <AnalyzeFilter />
       <div className="flex flex-col">
         <div className="h-[45vh] shrink-0">
-          <MapView center={coords} radius={1000} places={finalPlaces} />
+          <MapView center={coords} radius={DEFAULT_RADIUS_METERS} places={finalPlaces} />
         </div>
         <div className="bg-zinc-50">
           {!userContext || placesLoading ? (
