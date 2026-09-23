@@ -106,7 +106,7 @@ export const analyze = onRequest(
     try {
       const genAI = new GoogleGenerativeAI(GEMINI_KEY.value());
       const model = genAI.getGenerativeModel({
-        model: "gemini-3.1-flash-lite",
+        model: "gemini-3.5-flash-lite",
         systemInstruction: SYSTEM_INSTRUCTION,
         generationConfig: {
           responseMimeType: "application/json",
