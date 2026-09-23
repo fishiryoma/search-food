@@ -1,4 +1,4 @@
-import { getFirestore, FieldValue } from "firebase-admin/firestore";
+import { getFirestore, FieldValue, Timestamp } from "firebase-admin/firestore";
 
 // emulator 環境允許所有來源，正式環境只允許自己的 Hosting 網域
 export const ALLOWED_ORIGINS: boolean | string[] =
@@ -11,7 +11,22 @@ export async function checkRateLimit(ip: string, limitPerMin = 30): Promise<bool
   const bucket = Math.floor(Date.now() / 60_000);
   const ref = getFirestore().collection("rate_limits").doc(`${ip}_${bucket}`);
 
-  await ref.set({ count: FieldValue.increment(1), expireAtBucket: bucket + 2 }, { merge: true });
+  await ref.set(
+    { count: FieldValue.increment(1), expiresAt: Timestamp.fromMillis((bucket + 2) * 60_000) },
+    { merge: true }
+  );
   const snap = await ref.get();
   return ((snap.data()?.count as number) ?? 0) <= limitPerMin;
+}
+
+// 全站每日 Nearby API 呼叫上限（快取命中不計入）
+const DAILY_NEARBY_LIMIT = 100;
+
+export async function checkGlobalDailyLimit(): Promise<boolean> {
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD (UTC)
+  const ref = getFirestore().collection("global_usage").doc(today);
+
+  await ref.set({ count: FieldValue.increment(1) }, { merge: true });
+  const snap = await ref.get();
+  return ((snap.data()?.count as number) ?? 0) <= DAILY_NEARBY_LIMIT;
 }

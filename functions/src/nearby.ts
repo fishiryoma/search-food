@@ -1,8 +1,8 @@
 import { onRequest } from "firebase-functions/v2/https";
 import { defineSecret } from "firebase-functions/params";
 import { getApps, initializeApp } from "firebase-admin/app";
-import { getFirestore } from "firebase-admin/firestore";
-import { ALLOWED_ORIGINS, checkRateLimit } from "./utils.js";
+import { getFirestore, Timestamp } from "firebase-admin/firestore";
+import { ALLOWED_ORIGINS, checkRateLimit, checkGlobalDailyLimit } from "./utils.js";
 
 if (!getApps().length) initializeApp();
 getFirestore().settings({ ignoreUndefinedProperties: true });
@@ -10,6 +10,7 @@ getFirestore().settings({ ignoreUndefinedProperties: true });
 const PLACES_KEY = defineSecret("GOOGLE_PLACES_KEY");
 
 const CACHE_TTL_MS = 10 * 60 * 1000;
+const DEFAULT_RADIUS_METERS = 1000;
 const PLACES_API_URL = "https://places.googleapis.com/v1/places:searchNearby";
 const FIELD_MASK = [
   "places.id",
@@ -53,7 +54,7 @@ export const nearby = onRequest(
     const {
       lat,
       lng,
-      radius = 1000,
+      radius = DEFAULT_RADIUS_METERS,
     } = req.body as {
       lat: unknown;
       lng: unknown;
@@ -65,7 +66,7 @@ export const nearby = onRequest(
       return;
     }
 
-    const radiusNum = typeof radius === "number" ? radius : 1000;
+    const radiusNum = typeof radius === "number" ? radius : DEFAULT_RADIUS_METERS;
     const db = getFirestore();
     const key = cacheKey(lat, lng, radiusNum);
     const cacheRef = db.collection("places_cache").doc(key);
@@ -78,6 +79,11 @@ export const nearby = onRequest(
           res.json({ places: data.places });
           return;
         }
+      }
+
+      if (!(await checkGlobalDailyLimit())) {
+        res.status(429).json({ error: "Daily limit reached, please try again tomorrow" });
+        return;
       }
 
       const baseBody = {
@@ -146,7 +152,11 @@ export const nearby = onRequest(
         vicinity: p["formattedAddress"] as string | undefined,
       }));
 
-      await cacheRef.set({ places, cachedAt: Date.now() });
+      await cacheRef.set({
+        places,
+        cachedAt: Date.now(),
+        expiresAt: Timestamp.fromMillis(Date.now() + CACHE_TTL_MS),
+      });
       res.json({ places });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
