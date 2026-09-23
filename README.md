@@ -1,6 +1,6 @@
 # 附近吃什麼
 
-步行可達餐廳推薦 App。定位後回答兩個問題，AI 從 1 公里內的餐廳挑出最符合你今天胃口的幾間。
+步行可達餐廳推薦 App，本專案為 vibe coding（與 AI 協作開發）實作。定位後回答兩個問題，AI 從 1 公里內的餐廳挑出最符合你今天胃口的幾間。
 
 ## 功能
 
@@ -15,17 +15,44 @@
 
 ## 技術架構
 
-```
-前端 (Next.js 靜態輸出)          後端 (Firebase Cloud Functions Gen2)
-─────────────────────           ─────────────────────────────────────
-Next.js 16 + React 19           /nearby  → Google Places Nearby Search API
-TypeScript + Tailwind CSS        /analyze → Google Gemini 2.0 Flash
-@vis.gl/react-google-maps        Firestore → 快取（TTL 10 分鐘）+ 限流
-Zustand（篩選狀態）               Secret Manager → 保管所有 API Key
-Zod（前後端共用 schema）
-```
+前後端分離
+
+**前端（Vite 靜態輸出）**
+- Vite + React 19
+- TypeScript + Tailwind CSS
+- @vis.gl/react-google-maps
+- Zustand（篩選狀態）
+- Zod（前後端共用 schema）
+
+**後端（Firebase Cloud Functions Gen2）**
+- `/nearby` → Google Places Nearby Search API
+- `/analyze` → Google Gemini 2.0 Flash
+- Firestore → 快取（TTL 10 分鐘）+ 限流
+- Secret Manager → 保管所有 API Key
 
 前端純靜態部署至 Firebase Hosting，所有 API Key 僅存在後端。
+
+## 安全性設計
+
+- **API Key 隔離**：所有金鑰（Google Places、Gemini）存於 Firebase Secret Manager，僅 Cloud Functions 讀取，前端 bundle 不含任何後端金鑰
+- **CORS 白名單**：正式環境的 Cloud Functions 只接受自己 Hosting 網域的請求，其餘來源一律拒絕
+- **雙層限流**：每 IP 每分鐘 30 次請求限制 + 全站每日 100 次 Nearby API 總量上限，避免單一來源或費用失控
+- **Firestore 存取控制**：`firestore.rules` 明確拒絕所有 client SDK / REST API 直接存取，資料庫僅能透過 Cloud Functions 的 Admin SDK 存取
+- **統一錯誤格式**：外部 API 呼叫皆包 try/catch，錯誤一律回傳 `{ error: string }`，不外洩內部細節
+
+## 開發方式：Vibe Coding
+
+本專案採 vibe coding 方式開發，全程與 AI 協作，並透過兩個機制維持開發品質與可追蹤性：
+
+- **CLAUDE.md**：定義專案的技術規範與 AI 行為準則（例如前端禁止使用 `any`、只能用 pnpm、每次改動後強制跑 lint / tsc / format 檢查等），讓 AI 助理在每次協作時都遵循一致的規則。
+- **dev-log/**：紀錄開發過程與成果，避免與 AI 協作時脈絡遺失、決策不可追溯。內容包含：
+  - `00-overview.md`：專案總覽與技術選型
+  - `01-requirements.md`：需求紀錄
+  - `02-architecture-decisions.md`：架構決策（ADR）
+  - `03-api-research.md`：API 與費用研究
+  - `04-ai-discussions.md`：與 AI 討論後的設計決策摘要
+  - `05-issues-and-solutions.md`：Bug 與解法紀錄
+  - `phases/`：各 Milestone 的目標、進度與遺留問題
 
 ## 前置需求
 
@@ -55,7 +82,7 @@ pnpm install
 
 ```bash
 cp .env.local.example .env.local
-# 填入 NEXT_PUBLIC_GOOGLE_MAPS_KEY 和 NEXT_PUBLIC_GOOGLE_MAPS_ID
+# 填入 VITE_GOOGLE_MAPS_KEY 和 VITE_GOOGLE_MAPS_ID
 ```
 
 **3. 安裝 Functions 依賴**
@@ -69,7 +96,7 @@ cd functions && npm install && cd ..
 ```bash
 # functions/.secret.local（不納入版控）
 GOOGLE_PLACES_KEY=your_places_api_key
-GEMINI_KEY=your_gemini_api_key
+GEMINI_API_KEY=your_gemini_api_key
 ```
 
 **5. 啟動本機環境（兩個終端）**
@@ -78,44 +105,57 @@ GEMINI_KEY=your_gemini_api_key
 # 終端 1：Firebase Emulator（Functions + Firestore）
 firebase emulators:start --only functions,firestore
 
-# 終端 2：Next.js Dev Server
+# 終端 2：Vite Dev Server
 pnpm dev
 ```
 
-打開 [http://localhost:3000](http://localhost:3000)
+打開 [http://localhost:5173](http://localhost:5173)
+
+> **注意**：`firebase emulators:start` 不會自動重新編譯 TypeScript，emulator 實際執行的是 `functions/lib/` 裡上一次編譯出來的 JS。修改 `functions/src/*.ts` 後，若沒有重新編譯，emulator 會繼續跑舊版程式碼。修改 Functions 程式碼後，用以下其中一種方式讓 emulator 讀到最新版本：
+>
+> ```bash
+> # 方式 A：改一次、手動編譯一次
+> cd functions && npm run build && cd ..
+>
+> # 方式 B：另開一個終端持續監看變更、自動編譯
+> cd functions && npm run build:watch
+> ```
 
 ## 專案結構
 
 ```
-├── app/
+├── src/
 │   ├── components/
 │   │   ├── AnalyzeFilter.tsx     # 口味 / 推薦菜單篩選器
 │   │   ├── LoadingSpinner.tsx
 │   │   ├── MapView.tsx           # Google Maps + Markers + InfoWindow
 │   │   ├── QuestionnaireOverlay.tsx  # 問卷 overlay
 │   │   └── RestaurantCard.tsx    # 餐廳卡片
-│   └── page.tsx                  # 主流程控制
+│   ├── hooks/
+│   │   ├── useGeolocation.ts
+│   │   ├── usePlaces.ts
+│   │   └── useWalkingTime.ts     # Haversine 步行時間估算
+│   ├── lib/
+│   │   ├── api.ts                # fetchNearby / fetchAnalyze
+│   │   ├── questionnaire.ts      # 問卷選項常數
+│   │   └── schemas.ts            # Zod schema（前後端共用）
+│   ├── store/
+│   │   └── useFilterStore.ts     # Zustand 篩選狀態
+│   ├── App.tsx                   # 主流程控制
+│   └── main.tsx                  # 進入點
 ├── functions/src/
 │   ├── nearby.ts                 # /nearby endpoint
 │   ├── analyze.ts                # /analyze endpoint（Gemini）
 │   └── utils.ts                  # CORS、限流
-├── hooks/
-│   ├── useGeolocation.ts
-│   ├── usePlaces.ts
-│   └── useWalkingTime.ts         # Haversine 步行時間估算
-├── lib/
-│   ├── api.ts                    # fetchNearby / fetchAnalyze
-│   ├── questionnaire.ts          # 問卷選項常數
-│   └── schemas.ts                # Zod schema（前後端共用）
-└── store/
-    └── useFilterStore.ts         # Zustand 篩選狀態
+└── index.html
 ```
 
 ## 指令
 
 ```bash
 pnpm dev              # 啟動開發伺服器
-pnpm build            # 靜態輸出到 out/
+pnpm build            # 靜態輸出到 dist/
+pnpm preview          # 預覽 build 結果
 pnpm lint             # ESLint
 pnpm tsc --noEmit     # TypeScript 型別檢查
 pnpm format           # Prettier 格式化
@@ -139,5 +179,5 @@ Functions 使用 Firebase Secret Manager 管理 API Key，部署前需先設定�
 
 ```bash
 firebase functions:secrets:set GOOGLE_PLACES_KEY
-firebase functions:secrets:set GEMINI_KEY
+firebase functions:secrets:set GEMINI_API_KEY
 ```
