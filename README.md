@@ -1,6 +1,8 @@
 # 附近吃什麼
 
-步行可達餐廳推薦 App，本專案為 vibe coding（與 AI 協作開發）實作。定位後回答兩個問題，AI 從 1 公里內的餐廳挑出最符合你今天胃口的幾間。
+步行可達餐廳推薦 App，本專案為 vibe coding（與 AI 協作開發）實作。定位後簡短問題，AI 分析 1 公里內的餐廳，並歸類出口味、菜單，讓毫無想法的使用者也能挑出最符合胃口的餐點。
+
+![餐廳推薦與菜單篩選畫面](public/menu-show.png)
 
 ## 功能
 
@@ -40,19 +42,21 @@
 - **Firestore 存取控制**：`firestore.rules` 明確拒絕所有 client SDK / REST API 直接存取，資料庫僅能透過 Cloud Functions 的 Admin SDK 存取
 - **統一錯誤格式**：外部 API 呼叫皆包 try/catch，錯誤一律回傳 `{ error: string }`，不外洩內部細節
 
+> Firestore 各 collection（`places_cache`、`rate_limits`、`global_usage`）的用途、Document ID 規則、欄位與清理策略，詳見 [`dev-log/phases/M6-cache-security.md`](dev-log/phases/M6-cache-security.md#firestore-資料結構參考補記於-2026-09-24)。
+
 ## 開發方式：Vibe Coding
 
 本專案採 vibe coding 方式開發，全程與 AI 協作，並透過兩個機制維持開發品質與可追蹤性：
 
 - **CLAUDE.md**：定義專案的技術規範與 AI 行為準則（例如前端禁止使用 `any`、只能用 pnpm、每次改動後強制跑 lint / tsc / format 檢查等），讓 AI 助理在每次協作時都遵循一致的規則。
-- **dev-log/**：紀錄開發過程與成果，避免與 AI 協作時脈絡遺失、決策不可追溯。內容包含：
-  - `00-overview.md`：專案總覽與技術選型
-  - `01-requirements.md`：需求紀錄
-  - `02-architecture-decisions.md`：架構決策（ADR）
-  - `03-api-research.md`：API 與費用研究
+- **dev-log/**：紀錄開發過程與成果，避免與 AI 協作時脈絡遺失、決策不可追溯。想找特定細節可以從這裡查：
+  - `00-overview.md`：專案總覽、技術選型摘要、版本歷程
+  - `01-requirements.md`：完整功能規格與 Out of Scope 範圍
+  - `02-architecture-decisions.md`：架構決策（ADR），例如為何用 Cloud Functions 而非 Next.js API Routes、為何從 Next.js 改用 Vite
+  - `03-api-research.md`：Google Places / Gemini API 的費用試算、限制與模型選型
   - `04-ai-discussions.md`：與 AI 討論後的設計決策摘要
-  - `05-issues-and-solutions.md`：Bug 與解法紀錄
-  - `phases/`：各 Milestone 的目標、進度與遺留問題
+  - `05-issues-and-solutions.md`：踩過的 Bug 與解法（TypeScript 型別問題、部署錯誤等）
+  - `phases/`：各 Milestone 的目標、進度與遺留問題，例如 `M6-cache-security.md` 內含 Firestore 資料結構、快取／限流／安全性設計的完整記錄
 
 ## 前置需求
 
@@ -165,8 +169,8 @@ pnpm format:check     # Prettier 格式驗證
 ## 部署
 
 ```bash
-# 前端 + Functions 同時部署
-firebase deploy
+# 前端 + Functions 同時部署（firebase deploy 不會自動 build，需先手動建置前端）
+pnpm build && firebase deploy
 
 # 只部署 Functions
 firebase deploy --only functions

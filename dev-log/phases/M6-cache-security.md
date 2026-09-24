@@ -17,7 +17,7 @@
 - [x] 建立 `functions/src/utils.ts`（ALLOWED_ORIGINS + checkRateLimit 共用邏輯）
 - [x] CORS 限制：emulator 允許所有來源，正式環境限定 `search-food-497209.web.app` / `.firebaseapp.com`
 - [x] 限流：Firestore transaction-based 計數器，key = `{ip}_{minute_bucket}`，上限 30 req/min
-  - `expireAtBucket` 欄位保留，供未來清理腳本識別過期文件
+  - 原本保留 `expireAtBucket` 欄位供未來清理腳本使用，2026-09-23 已改為 `expiresAt`（Timestamp）搭配 Firestore TTL 政策，見下方「Firestore 資料結構參考」
 - [x] GCP Console：設定 Budget Alert → 手動步驟，非程式碼（補記於 2026-09-23：已設定，$5/月，50%/90% 門檻通知）
 - [x] API Key 限制：Maps JS API 加 HTTP Referrer → Cloud Console 手動設定（補記於 2026-09-23：Places API Key 改採「API restriction」限制為只能呼叫 Places API，IP 限制評估後決定不做，理由見下方「後續強化」）
 - [x] ESLint ✅ tsc --noEmit ✅ Prettier ✅
@@ -44,6 +44,16 @@ M6 完成後，又陸續補強了兩項當初未涵蓋的安全/成本控制措�
   - 已設定 Budget Alert（$5/月，50%/90% 通知）作為費用失控時的偵測手段
 - **放棄的替代方案**：VPC connector + Cloud NAT 固定 IP — 技術上可行但增加常態性費用與維運複雜度，與個人 MVP 規模不成比例
 - **後果與取捨**：IP 限制屬於「事前阻擋」，目前組合（Secret Manager + API restriction + Budget Alert）屬於「縮小範圍 + 事後偵測」，並非完全阻絕外洩後被濫用的可能性，是已知且刻意接受的風險
+
+## Firestore 資料結構參考（補記於 2026-09-24）
+
+| Collection | 用途 | Document ID | 主要欄位 | 清理方式 |
+|---|---|---|---|---|
+| `places_cache` | 快取 Nearby Search 結果，同座標+半徑 10 分鐘內不重打 Places API | `{lat}_{lng}_{radius}`（座標取小數點後 3 位，約 111 公尺網格） | `places`（陣列）、`cachedAt`（number，讀取時判斷新鮮度用）、`expiresAt`（Timestamp，供 TTL 清理用） | Firestore TTL 政策（欄位 `expiresAt`） |
+| `rate_limits` | 每 IP 每分鐘請求次數計數，超過上限（30 次）回 429 | `{ip}_{minute_bucket}` | `count`（number，`FieldValue.increment`）、`expiresAt`（Timestamp） | Firestore TTL 政策（欄位 `expiresAt`） |
+| `global_usage` | 全站每日 Nearby API 呼叫總數，超過上限（100 次）回 429，防費用失控 | `{YYYY-MM-DD}`（UTC 日期） | `count`（number） | 不清理，成長很慢（一天一筆），視為使用量歷史保留 |
+
+三者都只透過 Cloud Functions 的 Admin SDK 讀寫（[nearby.ts](../../functions/src/nearby.ts)、[utils.ts](../../functions/src/utils.ts)），前端不直接連線 Firestore；存取控制見上方「`firestore.rules` 從預設佔位規則改為明確拒絕」。
 
 ## 下一步
 M7：Firebase 完整部署（Hosting + Functions + Secret Manager）
